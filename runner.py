@@ -1,6 +1,6 @@
 from simglucose.simulation.user_interface import simulate
 import logging
-
+from simglucose.simulation.scenario import CustomScenario
 """
 class PrintStreamHandler(logging.StreamHandler):
     def __init__(self):
@@ -20,5 +20,4 @@ handler.setFormatter(logging.Formatter(fmt=log_format))
 for logger in loggers:
     logger.addHandler(handler)
 """
-
-simulate()
+scenario =

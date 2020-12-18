@@ -2,6 +2,7 @@ import logging
 from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
+import generateScenario as gen
 
 logger = logging.getLogger(__name__)
 Action = namedtuple('scenario_action', ['meal'])
@@ -26,7 +27,7 @@ class Scenario(object):
 
 
 class CustomScenario(Scenario):
-    def __init__(self, start_time=None, scenario=None):
+    def __init__(self, start_time=None, scenario=None, sim_time=None, skip_meal=False):
         '''
         scenario - a list of tuples (time, action), where time is a datetime or
                    timedelta or double, action is a namedtuple defined by
@@ -38,15 +39,17 @@ class CustomScenario(Scenario):
         if scenario is None:
             scenario = self.input_scenario()
         self.scenario = scenario
+        self.my_scenario = gen.generate(start_time, sim_time, skip_meal)
 
     def get_action(self, t):
-        times, actions = tuple(zip(*self.scenario))
-        times2compare = [parseTime(time, self.start_time) for time in times]
-        if t in times2compare:
-            idx = times2compare.index(t)
-            return Action(meal=actions[idx])
-        else:
-            return Action(meal=0)
+        # times, actions = tuple(zip(*self.scenario))
+        # times2compare = [parseTime(time, self.start_time) for time in times]
+        # if t in times2compare:
+        # idx = times2compare.index(t)
+        # return Action(meal=actions[idx])
+        # else:
+        # return Action(meal=0)
+        return Action(meal=self.my_scenario[t])
 
     def reset(self):
         pass
