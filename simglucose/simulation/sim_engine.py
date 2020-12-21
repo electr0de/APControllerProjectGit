@@ -1,6 +1,8 @@
 import logging
 import time
 import os
+import tensorflow as tf
+import numpy as np
 
 pathos = True
 try:
@@ -32,8 +34,15 @@ class SimObj(object):
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
                 self.env.render()
-            action = self.controller.policy(obs, reward, done, **info)
+            obs = np.array([obs.CGM])
+            tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs), 0)
+            previous_state = obs
+            action = self.controller.policy(tf_prev_state, reward, done, **info)
             obs, reward, done, info = self.env.step(action)
+            obs = np.array([obs.CGM])
+            tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs), 0)
+            self.controller.learn(tf_prev_state,action,reward,tf_current_state)
+
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
 

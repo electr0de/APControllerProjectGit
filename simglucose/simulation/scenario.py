@@ -36,8 +36,8 @@ class CustomScenario(Scenario):
                    type is interpreted as time in timedelta with unit of hours
         '''
         Scenario.__init__(self, start_time=start_time)
-        if scenario is None:
-            scenario = self.input_scenario()
+        #if scenario is None:
+            #scenario = self.input_scenario()
         self.scenario = scenario
         self.my_scenario = gen.generate(start_time, sim_time, skip_meal)
 
@@ -49,7 +49,10 @@ class CustomScenario(Scenario):
         # return Action(meal=actions[idx])
         # else:
         # return Action(meal=0)
-        return Action(meal=self.my_scenario[t])
+
+        if self.my_scenario.get(t,0) != 0:
+            print(f"fed patent at time {t.day} {t.hour}")
+        return Action(meal=self.my_scenario.get(t,0))
 
     def reset(self):
         pass

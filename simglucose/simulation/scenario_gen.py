@@ -13,6 +13,8 @@ class RandomScenario(Scenario):
         self.seed = seed
 
     def get_action(self, t):
+
+        print(t)
         # t must be datetime.datetime object
         delta_t = t - datetime.combine(t.date(), datetime.min.time())
         t_sec = delta_t.total_seconds()
