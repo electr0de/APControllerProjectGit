@@ -41,9 +41,14 @@ class SimObj(object):
             act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
 
             obs, reward, done, info = self.env.step(act_in_sim_form)
+            if done:
+                self.env.reset()
+                print("dead")
+            print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
             obs_in_nd = np.array([obs.CGM])
             tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
-            self.controller.learn(tf_prev_state, action, reward, tf_current_state)
+
+            self.controller.learn(tf_prev_state, action, -reward, tf_current_state)
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))

@@ -38,7 +38,7 @@ register(
 
 path = './results/testKeras'
 
-sim_time = timedelta(days=3)
+sim_time = timedelta(weeks=2)
 
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
@@ -56,21 +56,21 @@ controller1 = MyController('simglucose-adolescent2-v0')
 # Put them together to create a simulation object
 s1 = SimObj(env, controller1, sim_time, animate=False, path=path)
 
+#
+# patient2 = T1DPatient.withName('adult#009')
+# env2 = T1DSimEnv(patient2, sensor, pump, scenario)
+# controller2 = MyController('simglucose-adult9-v0')
+#
+# s2 = SimObj(env2, controller2, sim_time, animate=False, path=path)
+#
+#
+# patient2 = T1DPatient.withName('child#005')
+# env2 = T1DSimEnv(patient2, sensor, pump, scenario)
+# controller3 = MyController('simglucose-child5-v0')
+#
+# s3 = SimObj(env2, controller3, sim_time, animate=False, path=path)
 
-patient2 = T1DPatient.withName('adult#009')
-env2 = T1DSimEnv(patient2, sensor, pump, scenario)
-controller2 = MyController('simglucose-adult9-v0')
-
-s2 = SimObj(env2, controller2, sim_time, animate=False, path=path)
-
-
-patient2 = T1DPatient.withName('child#005')
-env2 = T1DSimEnv(patient2, sensor, pump, scenario)
-controller3 = MyController('simglucose-child5-v0')
-
-s3 = SimObj(env2, controller3, sim_time, animate=False, path=path)
-
-sim_instances = [s1, s2, s3]
+sim_instances = [s1]
 results = batch_sim(sim_instances)
 
 df = pd.concat(results, keys=[s.env.patient.name for s in sim_instances])

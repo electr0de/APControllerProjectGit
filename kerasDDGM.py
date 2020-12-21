@@ -324,7 +324,7 @@ for ep in range(total_episodes):
 
     prev_state = env.reset()
     episodic_reward = 0
-
+    previous_reward = 0
     while True:
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
@@ -333,9 +333,11 @@ for ep in range(total_episodes):
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
         action = policy(tf_prev_state, ou_noise)
+
         # Recieve state and reward from environment.
         state, reward, done, info = env.step(action)
-
+        print(f"difference in rewards : {reward-previous_reward}")
+        previous_reward = reward
         buffer.record((prev_state, action, reward, state))
         episodic_reward += reward
 
