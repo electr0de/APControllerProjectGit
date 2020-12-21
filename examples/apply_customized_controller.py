@@ -95,7 +95,7 @@ class MyController(Controller):
     # This update target parameters slowly
     # Based on rate `tau`, which is much less than one.
     @tf.function
-    def update_target(target_weights, weights, tau):
+    def update_target(self,target_weights, weights, tau):
         for (a, b) in zip(target_weights, weights):
             a.assign(b * tau + a * (1 - tau))
 
