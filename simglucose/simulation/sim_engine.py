@@ -3,7 +3,7 @@ import time
 import os
 import tensorflow as tf
 import numpy as np
-
+from simglucose.controller.base import Action
 pathos = True
 try:
     from pathos.multiprocessing import ProcessPool as Pool
@@ -38,7 +38,9 @@ class SimObj(object):
             tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs), 0)
             previous_state = obs
             action = self.controller.policy(tf_prev_state, reward, done, **info)
-            obs, reward, done, info = self.env.step(action)
+            act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
+
+            obs, reward, done, info = self.env.step(act_in_sim_form)
             obs = np.array([obs.CGM])
             tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs), 0)
             self.controller.learn(tf_prev_state,action,reward,tf_current_state)

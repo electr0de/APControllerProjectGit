@@ -65,14 +65,18 @@ class MyController(Controller):
 
         action = self.internal_policy(observation, ou_noise)
 
-        action = Action(basal=action, bolus=0)
+
         return action
     def learn(self, prev_state,action,reward,state):
         self.buffer.record((prev_state, action, reward, state))
         self.episodic_reward += reward
 
         self.buffer.learn()
-        self.update_target(self.target_actor.variables, self.actor_model.variables, tau)
+        try:
+            self.update_target(self.target_actor.variables, self.actor_model.variables, tau)
+        except:
+            traceback.print_exc()
+
         self.update_target(self.target_critic.variables, self.critic_model.variables, tau)
 
         self.ep_reward_list.append(self.episodic_reward)
@@ -235,7 +239,7 @@ class Buffer:
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
         with tf.GradientTape() as tape:
-            target_actions = self.Controller.Contarget_actor(next_state_batch, training=True)
+            target_actions = self.Controller.target_actor(next_state_batch, training=True)
             y = reward_batch + gamma * self.Controller.target_critic(
                 [next_state_batch, target_actions], training=True
             )
