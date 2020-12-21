@@ -25,7 +25,7 @@ for t in range(100):
     # to control the glucose only through basal instead
     # of asking patient to take bolus
     action = env.action_space.sample()
-
+    print(action)
 
     observation, reward, done, info = env.step(action)
     if done:
