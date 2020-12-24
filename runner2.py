@@ -10,7 +10,7 @@ from simglucose.actuator.pump import InsulinPump
 from simglucose.patient.t1dpatient import T1DPatient
 from simglucose.simulation.scenario_gen import RandomScenario
 from simglucose.simulation.scenario import CustomScenario
-from simglucose.simulation.sim_engine import SimObj, sim, batch_sim
+from simglucose.simulation.sim_engine import SimObj, sim, batch_sim,SimObjForKeras
 from datetime import timedelta
 from datetime import datetime
 from examples.apply_customized_controller import MyController
@@ -54,7 +54,7 @@ env = T1DSimEnv(patient, sensor, pump, scenario)
 controller1 = MyController('simglucose-adolescent2-v0')
 
 # Put them together to create a simulation object
-s1 = SimObj(env, controller1, sim_time, animate=False, path=path)
+s1 = SimObjForKeras(env, controller1, sim_time, animate=False, path=path)
 
 #
 # patient2 = T1DPatient.withName('adult#009')

@@ -34,22 +34,8 @@ class SimObj(object):
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
                 self.env.render()
-            obs_in_nd = np.array([obs.CGM])
-            tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
-            previous_state = obs
-            action = self.controller.policy(tf_prev_state, reward, done, **info)
-            act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
-
-            obs, reward, done, info = self.env.step(act_in_sim_form)
-            if done:
-                self.env.reset()
-                print("dead")
-            print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
-            obs_in_nd = np.array([obs.CGM])
-            tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
-
-            self.controller.learn(tf_prev_state, action, -reward, tf_current_state)
-
+            action = self.controller.policy(obs, reward, done, **info)
+            obs, reward, done, info = self.env.step(action)
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
 
@@ -89,3 +75,43 @@ def batch_sim(sim_instances, parallel=False):
     toc = time.time()
     print('Simulation took {} sec.'.format(toc - tic))
     return results
+
+
+class SimObjForKeras(SimObj):
+    def __init__(self,
+                 env,
+                 controller,
+                 sim_time,
+                 animate=True,
+                 path=None):
+        super(SimObjForKeras, self).__init__(
+                 env,
+                 controller,
+                 sim_time,
+                 animate,
+                 path)
+
+    def simulate(self):
+        obs, reward, done, info = self.env.reset()
+        tic = time.time()
+        while self.env.time < self.env.scenario.start_time + self.sim_time:
+            if self.animate:
+                self.env.render()
+            obs_in_nd = np.array([obs.CGM])
+            tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+            previous_state = obs
+            action = self.controller.policy(tf_prev_state, reward, done, **info)
+            act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
+
+            obs, reward, done, info = self.env.step(act_in_sim_form)
+            if done:
+                self.env.reset()
+                print("dead")
+            print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
+            obs_in_nd = np.array([obs.CGM])
+            tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+
+            self.controller.learn(tf_prev_state, action, -reward, tf_current_state)
+
+        toc = time.time()
+        logger.info('Simulation took {} seconds.'.format(toc - tic))
