@@ -84,7 +84,7 @@ class SimObjForKeras(SimObj):
                  sim_time,
                  animate=True,
                  path=None):
-        super(SimObjForKeras, self).__init__(
+        super().__init__(
                  env,
                  controller,
                  sim_time,
@@ -115,3 +115,4 @@ class SimObjForKeras(SimObj):
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
+
