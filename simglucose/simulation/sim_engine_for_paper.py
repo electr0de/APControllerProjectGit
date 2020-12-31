@@ -52,6 +52,9 @@ class SimObjectForPaper(SimObj):
         bolus_initial_list = []
         day_counter = 3
 
+        #uncomment to enable initialization from basic controller
+
+
         while True:
             if current_day != self.env.time.day:
                 current_day = self.env.time.day

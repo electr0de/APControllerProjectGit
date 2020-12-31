@@ -68,10 +68,12 @@ class PaperRLController(Controller):
 
         new_basal_rate = self.current_basal_rate + self.m * P * self.current_basal_rate
 
-        if new_basal_rate / self.current_basal_rate > 0.05:
-            self.current_basal_rate += new_basal_rate*0.05
-        else:
-            self.current_basal_rate = new_basal_rate
+        #uncomment to enable 5 % change
+
+        #if new_basal_rate / self.current_basal_rate > 0.05:
+            #self.current_basal_rate += new_basal_rate*0.05
+        #else:
+        self.current_basal_rate = new_basal_rate
 
     def calculate_bolus(self, previous_state, next_state, food_counter):
         F_hyper, F_hypo = self.extract_features(next_state)
@@ -91,13 +93,15 @@ class PaperRLController(Controller):
             self.current_breakfast_bolus = self.update_bolus(self.current_breakfast_bolus, P)
             return self.current_breakfast_bolus
 
-        elif food_counter == 1:
+        if food_counter == 1:
             self.current_lunch_bolus = self.update_bolus(self.current_lunch_bolus, P)
             return self.current_lunch_bolus
 
-        elif food_counter == 2:
+        if food_counter == 2:
             self.current_dinner_bolus = self.update_bolus(self.current_dinner_bolus, P)
             return self.current_dinner_bolus
+
+        return 0.0
 
 
     def perform_update(self, Ps, F_old, F, coming_from):
