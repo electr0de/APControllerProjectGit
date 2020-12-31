@@ -5,7 +5,7 @@ import math
 
 class PaperRLController(Controller):
 
-    def __init__(self, init_state, a_hyper = 1, a_hypo = 10, GL = 90.0, GH = 150.0):
+    def __init__(self, a_hyper = 1, a_hypo = 10, GL = 90.0, GH = 150.0, current_breakfast_bolus = 0.0, current_lunch_bolus = 0.0,current_dinner_bolus = 0.0, current_basal_rate = 0.0, init_state = None):
         super().__init__(init_state)
         np.random.seed(1)
 
@@ -13,10 +13,10 @@ class PaperRLController(Controller):
         self.hypo = a_hypo
         self.GL = GL
         self.GH = GH
-        self.current_basal_rate = 0.0
-        self.current_breakfast_bolus = 0.0
-        self.current_lunch_bolus = 0.0
-        self.current_dinner_bolus = 0.0
+        self.current_basal_rate = current_basal_rate
+        self.current_breakfast_bolus = current_breakfast_bolus   #bolus means IC ratio
+        self.current_lunch_bolus = current_lunch_bolus
+        self.current_dinner_bolus = current_dinner_bolus
         self.basal_theta = np.random.rand(2).tolist()
         np.random.seed(2)
         self.bolus_theta = np.random.rand(2).tolist()
@@ -118,7 +118,7 @@ class PaperRLController(Controller):
         previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
         next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
         d = cost + self.gamma * next_value  - previous_value
-        self.z = [self._lambda * element1 + element2 for element1,element2 in zip(self._lambda, F)]
+        self.z = [self._lambda * element1 + element2 for element1,element2 in zip(self.z, F)]
 
         self.w = [element1 + self.a * d * element2 for element1,element2 in zip(self.w, self.z)]
 
