@@ -1,4 +1,6 @@
+import pickle
 
+import matplotlib
 
 from simglucose.analysis.report import report
 
@@ -14,11 +16,11 @@ from datetime import timedelta
 from datetime import datetime
 from simglucose.controller.PaperController import PaperRLController
 import pandas as pd
+from os import path
 
+matplotlib.use("TkAgg")
 
-
-
-path = './results/testPaperController'
+path2 = './results/testPaperController'
 
 sim_time = timedelta(weeks=5)
 
@@ -37,9 +39,13 @@ RLController = PaperRLController()
 
 basic_controller = BBController()
 
+if path.exists("results/PaperControllerTestStuff/3dayObject.pkl"):
+    previous_data = pickle.load(open("results/PaperControllerTestStuff/3dayObject.pkl"))
+else:
+    previous_data = None
 
 # Put them together to create a simulation object
-s1 = SimObjectForPaper(env,RLController,sim_time,basic_controller,True,path)
+s1 = SimObjectForPaper(env,RLController,sim_time,basic_controller,True,path2, previous_data)
 
 #
 # patient2 = T1DPatient.withName('adult#009')
@@ -59,4 +65,4 @@ sim_instances = [s1]
 results = batch_sim(sim_instances)
 
 df = pd.concat(results, keys=[s.env.patient.name for s in sim_instances])
-results, ri_per_hour, zone_stats, figs, axes = report(df, path)
+results, ri_per_hour, zone_stats, figs, axes = report(df, path2)

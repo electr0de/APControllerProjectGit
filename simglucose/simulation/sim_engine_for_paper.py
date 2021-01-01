@@ -4,7 +4,7 @@ from simglucose.simulation.sim_engine import SimObj
 from simglucose.controller.base import Action
 import numpy as np
 import tensorflow as tf
-
+import pickle
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,11 @@ class ListForBolus:
             self.list.append(item)
         else:
             self.list.append(item)
+    def __getitem__(self, item):
+        return self.list[item]
+
+    def __setitem__(self, key, value):
+        self.list[key] = value
 
 class SimObjectForPaper(SimObj):
     def __init__(self,
@@ -27,7 +32,8 @@ class SimObjectForPaper(SimObj):
                  sim_time,
                  base_controller,
                  animate=True,
-                 path=None):
+                 path=None,
+                 previous_data=None):
         super().__init__(
                  env,
                  controller,
@@ -35,6 +41,15 @@ class SimObjectForPaper(SimObj):
                  animate,
                  path)
         self.base_controller = base_controller
+        self.path = "results/PaperControllerTestStuff"
+        self.previous_data = previous_data
+
+
+
+    def save(self, stuff):
+        with open(self.path+"/3dayObject.pkl") as f:
+            pickle.dump(stuff, f)
+
 
     def simulate(self):
         obs, reward, done, info = self.env.reset()
@@ -51,27 +66,37 @@ class SimObjectForPaper(SimObj):
         food_counter = 0
         bolus_initial_list = []
         day_counter = 3
-
+        global_state = []
         #uncomment to enable initialization from basic controller
 
+        if not self.previous_data:
+            while True:
+                if current_day != self.env.time.day:
+                    current_day = self.env.time.day
+                    day_counter -= 1
+                if day_counter == 0:
+                    break
 
-        while True:
-            if current_day != self.env.time.day:
-                current_day = self.env.time.day
-                day_counter -=1
-            if day_counter == 0:
-                break
+                if self.animate:
+                    self.env.render()
+                action = self.base_controller.policy(obs, reward, done, **info)
+                obs, reward, done, info = self.env.step(action)
+                basal_array.append(obs.CGM)
+                bolus_array.append(obs.CGM)
 
-            if self.animate:
-                self.env.render()
-            action = self.base_controller.policy(obs, reward, done, **info)
-            obs, reward, done, info = self.env.step(action)
-            basal_array.append(obs.CGM)
-            bolus_array.append(obs.CGM)
+                if obs.CHO != 0:
+                    bolus_initial_list.append(action.bolus / obs.CHO)
+                self.controller.current_basal_rate = action.basal
 
-            if obs.CHO != 0:
-                bolus_initial_list.append(action.bolus / obs.CHO)
-            self.controller.current_basal_rate = action.basal
+                if obs.CHO != 0:
+                    global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1],
+                                         bolus_array.list[-1], bolus_initial_list[-1]])
+                else:
+                    global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1], bolus_array.list[-1], 0])
+
+            self.save((bolus_array, bolus_initial_list))
+        else:
+            basal_array, bolus_initial_list = self.previous_data
 
 
 
