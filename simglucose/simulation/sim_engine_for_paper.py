@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ListForBolus:
     def __init__(self):
         self.list = []
-        self.max_length = 24*60*3
+        self.max_length = 24*60*3 / 3
 
     def append(self,item):
         if len(self.list)  >= self.max_length:
@@ -88,7 +88,7 @@ class SimObjectForPaper(SimObj):
                 if obs.CHO != 0:
                     previous_food = obs.CHO
                 if action.bolus != 0.0:
-                    bolus_initial_list.append(action.bolus/obs.CHO)
+                    bolus_initial_list.append(action.bolus/previous_food)
                 self.controller.current_basal_rate = action.basal
 
                 if obs.CHO != 0:
@@ -99,18 +99,20 @@ class SimObjectForPaper(SimObj):
 
             self.save((bolus_array, bolus_initial_list))
         else:
+
             basal_array, bolus_initial_list = self.previous_data
+            print("taken data from file")
 
         pickle.dump(global_state, open(self.path+"/globalstate.pkl", "wb"))
 
         input(" input to continue")
         for i in range(3):
             if i == 2:
-                self.controller.current_breakfast_bolus = bolus_initial_list[-1-i]
+                self.controller.current_breakfast_bolus = bolus_initial_list[-2-i]
             elif i == 1:
-                self.controller.current_lunch_bolus = bolus_initial_list[-1-i]
+                self.controller.current_lunch_bolus = bolus_initial_list[-2-i]
             elif i == 0:
-                self.controller.current_dinner_bolus = bolus_initial_list[-1-i]
+                self.controller.current_dinner_bolus = bolus_initial_list[-2-i]
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
@@ -119,10 +121,10 @@ class SimObjectForPaper(SimObj):
                 basal_array.append(obs.CGM)
                 basal_rate = self.controller.current_basal_rate
             else:
-                basal_rate = self.controller.calculate_basal(basal_array.list[:24*60], basal_array.list[24*60:24*60*2])
+                basal_rate = self.controller.calculate_basal(basal_array.list[:24*60/3], basal_array.list[24*60/3:24*60*2/3])
                 food_counter = 0
             if obs.CHO != 0:
-                bolus = self.controller.calculate_bolus(bolus_array.list[:24*60], bolus_array.list[24*60:24*60*2], food_counter) * obs.CHO
+                bolus = self.controller.calculate_bolus(bolus_array.list[:24*60/3], bolus_array.list[24*60/3:24*60*2/3], food_counter) * obs.CHO
                 food_counter += 1
             else:
                 bolus_array.append(obs.CGM)
