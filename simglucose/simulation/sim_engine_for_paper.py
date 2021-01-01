@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class ListForBolus:
     def __init__(self):
         self.list = []
-        self.max_length = 24*60*3 / 3
+        self.max_length = int(24*60*3 / 3)
 
     def append(self,item):
         if len(self.list)  >= self.max_length:
@@ -91,28 +91,20 @@ class SimObjectForPaper(SimObj):
                     bolus_initial_list.append(action.bolus/previous_food)
                 self.controller.current_basal_rate = action.basal
 
-                if obs.CHO != 0:
-                    global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1],
-                                         bolus_array.list[-1], bolus_initial_list[-1]])
-                else:
-                    global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1], bolus_array.list[-1], 0])
+                state_bolus = bolus_initial_list[-1] if action.bolus != 0 else 0
+                global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
 
-            self.save((bolus_array, bolus_initial_list))
+            self.save((basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate))
+            input("3 days over, ENTER to continue.....")
         else:
-
-            basal_array, bolus_initial_list = self.previous_data
+            basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate = self.previous_data
             print("taken data from file")
 
-        pickle.dump(global_state, open(self.path+"/globalstate.pkl", "wb"))
+        # pickle.dump(global_state, open(self.path+"/globalstate.pkl", "wb"))
 
-        input(" input to continue")
-        for i in range(3):
-            if i == 2:
-                self.controller.current_breakfast_bolus = bolus_initial_list[-2-i]
-            elif i == 1:
-                self.controller.current_lunch_bolus = bolus_initial_list[-2-i]
-            elif i == 0:
-                self.controller.current_dinner_bolus = bolus_initial_list[-2-i]
+        self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
+        self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
+        self.controller.current_dinner_bolus = bolus_initial_list[-2]
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
@@ -121,13 +113,14 @@ class SimObjectForPaper(SimObj):
                 basal_array.append(obs.CGM)
                 basal_rate = self.controller.current_basal_rate
             else:
-                basal_rate = self.controller.calculate_basal(basal_array.list[:24*60/3], basal_array.list[24*60/3:24*60*2/3])
+                basal_rate = self.controller.calculate_basal(basal_array.list[:int(24*60/3)], basal_array.list[int(24*60/3):int(24*60*2/3)])
                 food_counter = 0
             if obs.CHO != 0:
-                bolus = self.controller.calculate_bolus(bolus_array.list[:24*60/3], bolus_array.list[24*60/3:24*60*2/3], food_counter) * obs.CHO
+                bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)], bolus_array.list[int(24*60/3):int(24*60*2/3)], food_counter) * obs.CHO
                 food_counter += 1
             else:
                 bolus_array.append(obs.CGM)
+                bolus = 0.0
 
             current_day = self.env.time.day
             action = Action(basal=basal_rate, bolus=bolus)

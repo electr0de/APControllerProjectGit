@@ -44,9 +44,9 @@ class PaperRLController(Controller):
             elif element < self.GL:
                 M_hypo.append(element)
 
-        F_hyper = sum([element - self.GH for element in M_hyper]) * 1 / len(M_hyper)
+        F_hyper = sum([element - self.GH for element in M_hyper]) * 1 / len(M_hyper) if M_hyper else 0
 
-        F_hypo = sum([self.GL - element for element in M_hypo]) * 1 / len(M_hypo)
+        F_hypo = sum([self.GL - element for element in M_hypo]) * 1 / len(M_hypo) if M_hypo else 0
 
         return (F_hyper, F_hypo)
 
@@ -74,6 +74,7 @@ class PaperRLController(Controller):
             #self.current_basal_rate += new_basal_rate*0.05
         #else:
         self.current_basal_rate = new_basal_rate
+        return self.current_basal_rate
 
     def calculate_bolus(self, previous_state, next_state, food_counter):
         F_hyper, F_hypo = self.extract_features(next_state)
