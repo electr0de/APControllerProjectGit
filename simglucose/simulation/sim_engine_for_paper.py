@@ -101,8 +101,9 @@ class SimObjectForPaper(SimObj):
         else:
             basal_array, bolus_initial_list = self.previous_data
 
+        pickle.dump(global_state, open(self.path+"/globalstate.pkl", "wb"))
 
-
+        input(" input to continue")
         for i in range(3):
             if i == 2:
                 self.controller.current_breakfast_bolus = bolus_initial_list[-1-i]
