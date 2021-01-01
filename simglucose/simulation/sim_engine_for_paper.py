@@ -47,7 +47,7 @@ class SimObjectForPaper(SimObj):
 
 
     def save(self, stuff):
-        with open(self.path+"/3dayObject.pkl") as f:
+        with open(self.path+"/3dayObject.pkl", "wb") as f:
             pickle.dump(stuff, f)
 
 
@@ -67,6 +67,7 @@ class SimObjectForPaper(SimObj):
         bolus_initial_list = []
         day_counter = 3
         global_state = []
+        previous_food = 0
         #uncomment to enable initialization from basic controller
 
         if not self.previous_data:
@@ -85,7 +86,9 @@ class SimObjectForPaper(SimObj):
                 bolus_array.append(obs.CGM)
 
                 if obs.CHO != 0:
-                    bolus_initial_list.append(action.bolus / obs.CHO)
+                    previous_food = obs.CHO
+                if action.bolus != 0.0:
+                    bolus_initial_list.append(action.bolus/obs.CHO)
                 self.controller.current_basal_rate = action.basal
 
                 if obs.CHO != 0:
@@ -101,12 +104,12 @@ class SimObjectForPaper(SimObj):
 
 
         for i in range(3):
-            if i == 0:
-                self.controller.current_breakfast_bolus = bolus_initial_list[i]
+            if i == 2:
+                self.controller.current_breakfast_bolus = bolus_initial_list[-1-i]
             elif i == 1:
-                self.controller.current_lunch_bolus = bolus_initial_list[i]
-            elif i == 2:
-                self.controller.current_dinner_bolus = bolus_initial_list[i]
+                self.controller.current_lunch_bolus = bolus_initial_list[-1-i]
+            elif i == 0:
+                self.controller.current_dinner_bolus = bolus_initial_list[-1-i]
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
