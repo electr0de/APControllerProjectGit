@@ -111,6 +111,8 @@ class PaperRLController(Controller):
         else:
             theta = self.bolus_theta
 
+        print(f"theta: {theta}")
+
         Pa = sum([element1 * element2 for element1, element2 in zip(F, theta)])
 
         Pd = self.h * Pa + (1 - self.h) * Ps
