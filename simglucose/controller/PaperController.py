@@ -7,25 +7,26 @@ import math
 
 sign = lambda x: math.copysign(1, x)
 
+normalize_f = lambda x: (x - 39) / (600 - 39)
 
 class PaperRLController(Controller):
 
-    def __init__(self, a_hyper=1, a_hypo=10, GL=90.0, GH=150.0, current_breakfast_bolus=0.0, current_lunch_bolus=0.0,
+    def __init__(self, a_hyper=1, a_hypo=10, current_breakfast_bolus=0.0, current_lunch_bolus=0.0,
                  current_dinner_bolus=0.0, current_basal_rate=0.0, init_state=None):
         super().__init__(init_state)
         np.random.seed(1)
 
         self.a_hyper = a_hyper
         self.hypo = a_hypo
-        self.GL = GL
-        self.GH = GH
+        self.GL = normalize_f(90)
+        self.GH = normalize_f(180)
         self.current_basal_rate = current_basal_rate
         self.current_breakfast_bolus = current_breakfast_bolus  # bolus means IC ratio
         self.current_lunch_bolus = current_lunch_bolus
         self.current_dinner_bolus = current_dinner_bolus
-        self.basal_theta = np.random.rand(2).tolist()
-        np.random.seed(2)
-        self.bolus_theta = np.random.rand(2).tolist()
+        self.theta = np.random.rand(2).tolist()
+        #np.random.seed(2)
+        #self.bolus_theta = np.random.rand(2).tolist()
         self.h = 0.5
         self.c_sigma = 0.05
         self.m = 0.5
@@ -39,14 +40,16 @@ class PaperRLController(Controller):
         self.beta = 0.5
 
     def extract_features(self, array):
+
+
         M_hyper = []
         M_hypo = []
 
         for element in array:
-            if element > self.GH:
-                M_hyper.append(element)
-            elif element < self.GL:
-                M_hypo.append(element)
+            if element > 150:
+                M_hyper.append(normalize_f(element))
+            elif element < 90:
+                M_hypo.append(normalize_f(element))
 
         F_hyper = sum([element - self.GH for element in M_hyper]) * 1 / len(M_hyper) if M_hyper else 0
 
@@ -72,10 +75,11 @@ class PaperRLController(Controller):
 
         # uncomment to enable 5 % change
 
-        if abs(new_basal_rate / self.current_basal_rate) > 0.05:
-            self.current_basal_rate += self.current_basal_rate * 0.05 * sign(new_basal_rate)
-        else:
-            self.current_basal_rate = new_basal_rate
+        #if abs(new_basal_rate / self.current_basal_rate) > 0.05:
+            #self.current_basal_rate += self.current_basal_rate * 0.05 * sign(new_basal_rate)
+            #print(" used 5 % changed")
+        #else:
+        self.current_basal_rate = new_basal_rate
         return self.current_basal_rate
 
     def calculate_bolus(self, previous_state, next_state, food_counter):
@@ -107,10 +111,13 @@ class PaperRLController(Controller):
         return 0.0
 
     def perform_update(self, Ps, F_old, F, coming_from):
+        """
         if coming_from:
             theta = self.basal_theta
         else:
             theta = self.bolus_theta
+        """
+        theta = self.theta
 
         print(f"theta: {theta}")
 
@@ -132,11 +139,11 @@ class PaperRLController(Controller):
         self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
 
         if coming_from:
-            self.basal_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.basal_theta, F)]
-        else:
-            self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.bolus_theta, F)]
+            self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                element1, element2 in zip(self.theta, F)]
+        #else:
+            #self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                #element1, element2 in zip(self.bolus_theta, F)]
         return Pe
 
     def update_bolus(self, old_bolus, P):
@@ -144,11 +151,13 @@ class PaperRLController(Controller):
 
         l = 1 if (self.current_basal_rate > self.previous_basal_rate and fusion_rate < old_bolus) or (
                     self.current_basal_rate < self.previous_basal_rate and fusion_rate > old_bolus) else 0
+        #l = 0
 
         new_bolus = old_bolus + (1 - l) * fusion_rate
 
-        if abs(new_bolus / old_bolus) > 0.05:
-            updated_bolus = old_bolus + sign(new_bolus) * old_bolus * 0.05
-        else:
-            updated_bolus = new_bolus
+        #if abs(new_bolus / old_bolus) > 0.05:
+            #updated_bolus = old_bolus + sign(new_bolus) * old_bolus * 0.05
+            #print(" used 5 % changed")
+        #else:
+        updated_bolus = new_bolus
         return updated_bolus

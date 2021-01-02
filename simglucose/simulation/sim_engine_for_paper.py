@@ -115,9 +115,11 @@ class SimObjectForPaper(SimObj):
                 basal_rate = self.controller.current_basal_rate
             else:
                 basal_rate = self.controller.calculate_basal(basal_array.list[:int(24*60/3)], basal_array.list[int(24*60/3):int(24*60*2/3)])
+                print(f"New calculated basal is {basal_rate}")
                 food_counter = 0
             if obs.CHO != 0:
                 bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)], bolus_array.list[int(24*60/3):int(24*60*2/3)], food_counter) * obs.CHO
+                print(f"New calculated bolus is {bolus}")
                 food_counter += 1
             else:
                 bolus_array.append(obs.CGM)
@@ -125,6 +127,8 @@ class SimObjectForPaper(SimObj):
 
             current_day = self.env.time.day
             action = Action(basal=basal_rate, bolus=bolus)
+
+
             obs, reward, done, info = self.env.step(action)
 
         toc = time.time()

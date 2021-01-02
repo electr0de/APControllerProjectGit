@@ -27,7 +27,7 @@ sim_time = timedelta(weeks=5)
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
 
-patient = T1DPatient.withName('adolescent#002')
+patient = T1DPatient.withName('adult#003')
 sensor = CGMSensor.withName('Dexcom', seed=1)
 
 pump = InsulinPump.withName('Insulet')
