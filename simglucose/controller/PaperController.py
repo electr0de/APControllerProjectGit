@@ -117,7 +117,7 @@ class PaperRLController(Controller):
 
         Pd = self.h * Pa + (1 - self.h) * Ps
 
-        sigma = self.c_sigma * math.sqrt(F[0]**2 + F[1]**2)
+        sigma = self.c_sigma * (F[0]**2 + F[1]**2)
 
         Pe = Pd + np.random.normal(0, sigma)
 
@@ -125,9 +125,12 @@ class PaperRLController(Controller):
         previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
         next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
         d = cost + self.gamma * next_value  - previous_value
+
+        self.w = [element1 + self.a * d * element2 for element1, element2 in zip(self.w, self.z)]
+
         self.z = [self._lambda * element1 + element2 for element1,element2 in zip(self.z, F)]
 
-        self.w = [element1 + self.a * d * element2 for element1,element2 in zip(self.w, self.z)]
+
 
 
         if coming_from:

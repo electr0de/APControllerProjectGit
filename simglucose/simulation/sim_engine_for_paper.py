@@ -102,6 +102,7 @@ class SimObjectForPaper(SimObj):
 
         # pickle.dump(global_state, open(self.path+"/globalstate.pkl", "wb"))
 
+
         self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
         self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
         self.controller.current_dinner_bolus = bolus_initial_list[-2]
