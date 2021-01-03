@@ -14,7 +14,7 @@ def generate(startTime, simTime:timedelta, skip_meals:False):
     main_meal_variablity = 10
     snack_variability = 5
 
-    CHO_estimation_uncertainity = 50
+    CHO_estimation_uncertainity = 0
 
 
     main_meals_skip_per_week = 2

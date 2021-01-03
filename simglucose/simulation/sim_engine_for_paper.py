@@ -1,3 +1,4 @@
+import random
 import time
 import logging
 from simglucose.simulation.sim_engine import SimObj
@@ -106,7 +107,7 @@ class SimObjectForPaper(SimObj):
         self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
         self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
         self.controller.current_dinner_bolus = bolus_initial_list[-2]
-
+        CHO_estimation_uncertainity = 0
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
                 self.env.render()
@@ -118,7 +119,9 @@ class SimObjectForPaper(SimObj):
                 print(f"New calculated basal is {basal_rate}")
                 food_counter = 0
             if obs.CHO != 0:
-                bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)], bolus_array.list[int(24*60/3):int(24*60*2/3)], food_counter) * obs.CHO
+                cho = random.randint(-CHO_estimation_uncertainity, CHO_estimation_uncertainity)
+                temp_meal = obs.CHO + obs.CHO * cho / 100
+                bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)], bolus_array.list[int(24*60/3):int(24*60*2/3)], food_counter) * temp_meal
                 print(f"New calculated bolus is {bolus}")
                 food_counter += 1
             else:
