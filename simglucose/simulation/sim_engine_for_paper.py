@@ -55,6 +55,7 @@ class SimObjectForPaper(SimObj):
             pickle.dump(stuff, f)
 
     def toggle_plotting(self):
+        print("toggling......................")
         self.plotting = not self.plotting
 
     def get_patient_bio(self, info):
@@ -76,7 +77,7 @@ class SimObjectForPaper(SimObj):
     def simulate(self):
         obs, reward, done, info = self.env.reset()
 
-        keyboard.add_hotkey('p', self.toggle_plotting)
+        keyboard.add_hotkey('ctrl+p', self.toggle_plotting)
 
         tic = time.time()
 

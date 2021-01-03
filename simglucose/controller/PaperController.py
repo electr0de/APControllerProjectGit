@@ -36,7 +36,7 @@ class PaperRLController(Controller):
         self.m = 0.5
         self.previous_basal_rate = 0.0
         np.random.seed(3)
-        self.w = np.random.rand(2).tolist()
+        self.w = (np.random.rand(2)*2-1).tolist()
         self._lambda = 0.5
         self.gamma = 0.9
         self.z = [0.0, 0.0]
@@ -44,8 +44,6 @@ class PaperRLController(Controller):
         self.beta = 0.5
 
     def extract_features(self, array):
-
-
         M_hyper = []
         M_hypo = []
 
