@@ -6,7 +6,8 @@ from simglucose.controller.base import Action
 import numpy as np
 import tensorflow as tf
 import pickle
-
+import pandas as pd
+from simglucose.simulation.theta_init import ThetaInit
 logger = logging.getLogger(__name__)
 
 class ListForBolus:
@@ -66,10 +67,30 @@ class SimObjectForPaper(SimObj):
         current_day = self.env.time.day
         food_counter = 0
         bolus_initial_list = []
-        day_counter = 3
+        day_counter = 7
         global_state = []
         previous_food = 0
+
+        name = info.get('patient_name')
+
         #uncomment to enable initialization from basic controller
+
+        if any(self.base_controller.quest.Name.str.match(name)):
+            q = self.base_controller.quest[self.base_controller.quest.Name.str.match(name)]
+            params = self.base_controller.patient_params[self.base_controller.patient_params.Name.str.match(
+                name)]
+            u2ss = np.asscalar(params.u2ss.values)
+            BW = np.asscalar(params.BW.values)
+
+        else:
+            q = pd.DataFrame([['Average', 1 / 15, 1 / 50, 50, 30]],
+                             columns=['Name', 'CR', 'CF', 'TDI', 'Age'])
+            u2ss = 1.43
+            BW = 57.0
+
+        TDI = q.TDI.values
+
+        theta_init = ThetaInit(u2ss, BW, TDI)
 
         if not self.previous_data:
             while True:
@@ -85,7 +106,7 @@ class SimObjectForPaper(SimObj):
                 obs, reward, done, info = self.env.step(action)
                 basal_array.append(obs.CGM)
                 bolus_array.append(obs.CGM)
-
+                theta_init.send_glucose(obs.CGM)
                 if obs.CHO != 0:
                     previous_food = obs.CHO
                 if action.bolus != 0.0:
@@ -96,7 +117,7 @@ class SimObjectForPaper(SimObj):
                 global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
 
             self.save((basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate))
-            input("3 days over, ENTER to continue.....")
+            input("Initialization days over, ENTER to continue.....")
         else:
             basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate = self.previous_data
             print("taken data from file")
