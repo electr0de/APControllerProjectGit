@@ -1,9 +1,13 @@
 from functools import partial
+from pprint import pprint
 
+import test2
 from simglucose.controller.base import Controller
 from datetime import datetime, timedelta, time
 import numpy as np
 import math
+
+percent_5 = True
 
 sign = lambda x: math.copysign(1, x)
 
@@ -19,7 +23,7 @@ class PaperRLController(Controller):
         self.a_hyper = a_hyper
         self.hypo = a_hypo
         self.GL = normalize_f(90)
-        self.GH = normalize_f(180)
+        self.GH = normalize_f(150)
         self.current_basal_rate = current_basal_rate
         self.current_breakfast_bolus = current_breakfast_bolus  # bolus means IC ratio
         self.current_lunch_bolus = current_lunch_bolus
@@ -60,12 +64,16 @@ class PaperRLController(Controller):
     def calculate_basal(self, previous_state, basal_array):
         F_hyper, F_hypo = self.extract_features(basal_array)
         F_hyper_prev, F_hypo_prev = self.extract_features(previous_state)
+
+        Ps = None
         if F_hypo == 0.0:
             Ps = 0
         elif F_hypo > 0.0 and F_hyper == 0.0:
             Ps = -0.1 * F_hypo
         elif F_hypo > 0.0 and F_hyper > 0.0:
             Ps = -0.05 * F_hypo
+
+        assert Ps is not None, "No conditions matched"
 
         P = self.perform_update(Ps, (F_hyper_prev, F_hypo_prev), (F_hyper, F_hypo), True)
 
@@ -75,11 +83,12 @@ class PaperRLController(Controller):
 
         # uncomment to enable 5 % change
 
-        #if abs(new_basal_rate / self.current_basal_rate) > 0.05:
-            #self.current_basal_rate += self.current_basal_rate * 0.05 * sign(new_basal_rate)
-            #print(" used 5 % changed")
-        #else:
-        self.current_basal_rate = new_basal_rate
+        if abs(new_basal_rate / self.current_basal_rate) > 0.05 and percent_5:
+            self.current_basal_rate += self.current_basal_rate * 0.05 * sign(new_basal_rate)
+            print(" used 5 % changed")
+        else:
+            self.current_basal_rate = new_basal_rate
+            print(" didn't use 5 % changed")
         return self.current_basal_rate
 
     def calculate_bolus(self, previous_state, next_state, food_counter):
@@ -87,12 +96,15 @@ class PaperRLController(Controller):
 
         F_hyper_prev, F_hypo_prev = self.extract_features(previous_state)
 
+        Ps = None
         if F_hypo == 0.0:
             Ps = 0
         elif F_hypo > 0.0 and F_hyper == 0.0:
             Ps = +0.1 * F_hypo
         elif F_hypo > 0.0 and F_hyper > 0.0:
             Ps = +0.05 * F_hypo
+
+        assert Ps is not None, "No conditions matched"
 
         P = self.perform_update(Ps, (F_hyper_prev, F_hypo_prev), (F_hyper, F_hypo), False)
 
@@ -155,9 +167,37 @@ class PaperRLController(Controller):
 
         new_bolus = old_bolus + (1 - l) * fusion_rate
 
-        #if abs(new_bolus / old_bolus) > 0.05:
-            #updated_bolus = old_bolus + sign(new_bolus) * old_bolus * 0.05
-            #print(" used 5 % changed")
-        #else:
-        updated_bolus = new_bolus
+        if abs(new_bolus / old_bolus) > 0.05 and percent_5:
+            updated_bolus = old_bolus + sign(new_bolus) * old_bolus * 0.05
+            print(" used 5 % changed")
+        else:
+            updated_bolus = new_bolus
+            print(" didn't use 5 % changed")
         return updated_bolus
+
+
+
+
+# if __name__ == '__main__':
+#
+#     GL = normalize_f(90)
+#     GH = normalize_f(150)
+#
+#     def extract_features(array):
+#         M_hyper = []
+#         M_hypo = []
+#
+#         for element in array:
+#             if element > 150:
+#                 M_hyper.append(normalize_f(element))
+#             elif element < 90:
+#                 M_hypo.append(normalize_f(element))
+#
+#         F_hyper = sum([element - GH for element in M_hyper]) * 1 / len(M_hyper) if M_hyper else 0
+#
+#         F_hypo = sum([GL - element for element in M_hypo]) * 1 / len(M_hypo) if M_hypo else 0
+#
+#         return (F_hyper, F_hypo)
+#
+#     array = test2.array
+#     print(extract_features(array))

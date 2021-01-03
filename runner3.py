@@ -39,7 +39,9 @@ RLController = PaperRLController()
 
 basic_controller = BBController()
 
-if path.exists("results/PaperControllerTestStuff/3dayObject.pkl"):
+debug_rl = False
+
+if debug_rl and path.exists("results/PaperControllerTestStuff/3dayObject.pkl"):
     previous_data = pickle.load(open("results/PaperControllerTestStuff/3dayObject.pkl", "rb"))
 else:
     previous_data = None
