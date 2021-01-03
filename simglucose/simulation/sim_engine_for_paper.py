@@ -77,7 +77,7 @@ class SimObjectForPaper(SimObj):
     def simulate(self):
         obs, reward, done, info = self.env.reset()
 
-        keyboard.add_hotkey('ctrl+p', self.toggle_plotting)
+        keyboard.add_hotkey('alt+p', self.toggle_plotting)
 
         tic = time.time()
 
@@ -166,4 +166,10 @@ class SimObjectForPaper(SimObj):
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
+
+        if not self.plotting:
+            self.toggle_plotting()
+        while self.animate and self.plotting:
+            self.env.render()
+            time.sleep(0.01)
 

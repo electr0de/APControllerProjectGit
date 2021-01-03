@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from pprint import pprint
+
 import numpy as np
 from PyIF import te_compute as te
 
@@ -39,7 +41,7 @@ class ThetaInit:
         g_sig = g_sig[self.d:]
         IA = IA[:len(g_sig)]
 
-        TE = te.te_compute(IA, g_sig, k=1, embedding=1, safetyCheck=True, GPU=False)
+        TE = te.te_compute(IA, g_sig, k=1, embedding=1, safetyCheck=False, GPU=False)
         return self.Wh / TE, self.Wl / TE
 
     def _calc_basal(self):
