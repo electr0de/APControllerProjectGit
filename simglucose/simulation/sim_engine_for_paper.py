@@ -48,9 +48,9 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = True
+        self.plotting = False
 
-        self.debug_with_basal = False
+        self.debug_with_basal = True
 
     def save(self, stuff):
         with open(self.path+"/3dayObject.pkl", "wb") as f:
@@ -79,7 +79,7 @@ class SimObjectForPaper(SimObj):
     def simulate(self):
         obs, reward, done, info = self.env.reset()
 
-        keyboard.add_hotkey('alt+p', self.toggle_plotting)
+        # keyboard.add_hotkey('alt+p', self.toggle_plotting)
 
         tic = time.time()
 
