@@ -48,7 +48,9 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = False
+        self.plotting = True
+
+        self.debug_with_basal = False
 
     def save(self, stuff):
         with open(self.path+"/3dayObject.pkl", "wb") as f:
@@ -94,7 +96,7 @@ class SimObjectForPaper(SimObj):
         u2ss, BW, TDI = self.get_patient_bio(info)
         theta_init = ThetaInit(u2ss, BW, TDI)
 
-        if not self.previous_data:
+        if not self.previous_data :
             while day_counter > 0:
                 if self.animate and self.plotting:
                     self.env.render()
@@ -129,10 +131,15 @@ class SimObjectForPaper(SimObj):
             basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate, self.controller.theta = self.previous_data
             print("taken data from file")
 
-        self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
-        self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
-        self.controller.current_dinner_bolus = bolus_initial_list[-2]
+        if self.debug_with_basal:
+            self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
+            self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
+            self.controller.current_dinner_bolus = bolus_initial_list[-2]
+
+
         CHO_estimation_uncertainity = 0
+
+
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate and self.plotting:
                 self.env.render()

@@ -1,6 +1,6 @@
-from datetime import datetime,timedelta
-import random
 import math
+import random
+from datetime import datetime, timedelta
 from pprint import pprint
 
 

@@ -1,13 +1,13 @@
 from functools import partial
 from pprint import pprint
 
-import test2
+#import test2
 from simglucose.controller.base import Controller
 from datetime import datetime, timedelta, time
 import numpy as np
 import math
 
-percent_5 = True
+percent_5 = False
 
 sign = lambda x: math.copysign(1, x)
 
@@ -35,7 +35,7 @@ class PaperRLController(Controller):
         self.c_sigma = 0.05
         self.m = 0.5
         self.previous_basal_rate = 0.0
-        np.random.seed(3)
+        np.random.seed(55)
         self.w = (np.random.rand(2)*2-1).tolist()
         self._lambda = 0.5
         self.gamma = 0.9
@@ -149,8 +149,11 @@ class PaperRLController(Controller):
         self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
 
         if coming_from:
-            self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.theta, F)]
+            try:
+                self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                    element1, element2 in zip(self.theta, F)]
+            except:
+                print("got exception")
         #else:
             #self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 #element1, element2 in zip(self.bolus_theta, F)]

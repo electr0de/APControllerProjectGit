@@ -17,7 +17,7 @@ from datetime import datetime
 from simglucose.controller.PaperController import PaperRLController
 import pandas as pd
 from os import path
-
+from simglucose.simulation.zero_scenario import ZeroScenario
 matplotlib.use("TkAgg")
 
 path2 = './results/testPaperController'
@@ -31,8 +31,11 @@ patient = T1DPatient.withName('adult#003')
 sensor = CGMSensor.withName('Dexcom', seed=1)
 
 pump = InsulinPump.withName('Insulet')
+
 scenario=CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
-env = T1DSimEnv(patient, sensor, pump, scenario)
+
+zero_scenario = ZeroScenario(start_time=start_time)
+env = T1DSimEnv(patient, sensor, pump, zero_scenario)
 
 # Create a controller
 RLController = PaperRLController()

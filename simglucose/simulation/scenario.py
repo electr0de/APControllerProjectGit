@@ -2,7 +2,7 @@ import logging
 from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
-import generateScenario as gen
+from simglucose.simulation import generateScenario as gen
 
 logger = logging.getLogger(__name__)
 Action = namedtuple('scenario_action', ['meal'])
