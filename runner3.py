@@ -22,7 +22,7 @@ matplotlib.use("TkAgg")
 
 path2 = './results/testPaperController'
 
-sim_time = timedelta(weeks=5)
+sim_time = timedelta(weeks=10)
 
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
@@ -35,7 +35,7 @@ pump = InsulinPump.withName('Insulet')
 scenario=CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
 
 zero_scenario = ZeroScenario(start_time=start_time)
-env = T1DSimEnv(patient, sensor, pump, zero_scenario)
+env = T1DSimEnv(patient, sensor, pump, scenario)
 
 # Create a controller
 RLController = PaperRLController()
@@ -50,7 +50,7 @@ else:
     previous_data = None
 
 # Put them together to create a simulation object
-s1 = SimObjectForPaper(env,RLController,sim_time,basic_controller,True,path2, previous_data)
+s1 = SimObjectForPaper(env, RLController, sim_time, basic_controller, True, path2, previous_data)
 
 #
 # patient2 = T1DPatient.withName('adult#009')

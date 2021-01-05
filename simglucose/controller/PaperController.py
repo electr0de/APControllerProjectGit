@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, time
 import numpy as np
 import math
 
-percent_5 = True
+percent_value = 0.05
 
 sign = lambda x: math.copysign(1, x)
 
@@ -81,12 +81,12 @@ class PaperRLController(Controller):
 
         # uncomment to enable 5 % change
 
-        if abs(br_change / self.current_basal_rate) > 0.05 and percent_5:
-            self.current_basal_rate += self.current_basal_rate * 0.05 * sign(br_change)
-            print(" used 5 % changed")
+        if abs(br_change / self.current_basal_rate) > percent_value:
+            self.current_basal_rate += self.current_basal_rate * percent_value * sign(br_change)
+            print(" used % changed")
         else:
             self.current_basal_rate += br_change
-            print(" didn't use 5 % changed")
+            print(" didn't use % changed")
         return self.current_basal_rate
 
     def calculate_bolus(self, previous_state, next_state, food_counter):
@@ -139,7 +139,7 @@ class PaperRLController(Controller):
 
         Pe = Pd + np.random.normal(0, sigma)
 
-        cost = 1 * F[0] + 100 * F[1]
+        cost = 1 * F[0] + 10 * F[1]
         previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
         next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
         d = cost + self.gamma * next_value - previous_value
@@ -148,12 +148,15 @@ class PaperRLController(Controller):
 
         self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
 
-        if coming_from and sigma > 0.0000001:
+        if coming_from:
             self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 element1, element2 in zip(self.theta, F)]
         #else:
             #self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 #element1, element2 in zip(self.bolus_theta, F)]
+
+        assert sigma > 0.0000001, "sigma is too low"
+
         return Pe
 
     def update_bolus(self, old_bolus, P):
@@ -164,12 +167,12 @@ class PaperRLController(Controller):
         
         bl_change = (1 - l) * fusion_rate
 
-        if abs(bl_change / old_bolus) > 0.05 and percent_5:
-            old_bolus += sign(bl_change) * old_bolus * 0.05
-            print(" used 5 % changed")
+        if abs(bl_change / old_bolus) > percent_value:
+            old_bolus += sign(bl_change) * old_bolus * percent_value
+            print(" used % changed")
         else:
             old_bolus += bl_change
-            print(" didn't use 5 % changed")
+            print(" didn't use % changed")
         return old_bolus
 
 
