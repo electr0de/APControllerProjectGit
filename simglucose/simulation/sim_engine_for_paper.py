@@ -111,17 +111,19 @@ class SimObjectForPaper(SimObj):
                 if obs.CHO != 0:
                     previous_food = obs.CHO
                     food_counter += 1
-                if action.bolus != 0.0 and food_counter < 3:
+                if action.bolus != 0.0 :
                     bolus_initial_list.append(action.bolus/previous_food)
-                    bolus = 0
+                    if food_counter == 2:
+                        bolus = 0
+
 
                 action_to_take = Action(basal = basal, bolus = bolus)
                 obs, reward, done, info = self.env.step(action_to_take)
                 self.controller.current_basal_rate = action.basal
 
-                # ignore, for debug
-                state_bolus = bolus_initial_list[-1] if action.bolus != 0 else 0
-                global_state.append([self.env.time, obs.CGM, obs.CHO, action_to_take.basal, action_to_take.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
+                # # ignore, for debug
+                # state_bolus = bolus_initial_list[-1] if action.bolus != 0 else 0
+                # global_state.append([self.env.time, obs.CGM, obs.CHO, action_to_take.basal, action_to_take.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
 
                 if current_day != self.env.time.day:
                     current_day = self.env.time.day
