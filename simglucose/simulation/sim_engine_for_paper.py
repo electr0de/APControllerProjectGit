@@ -110,8 +110,10 @@ class SimObjectForPaper(SimObj):
 
                 if obs.CHO != 0:
                     previous_food = obs.CHO
-                if action.bolus != 0.0:
+                    food_counter+=1
+                if action.bolus != 0.0 and food_counter < 3:
                     bolus_initial_list.append(action.bolus/previous_food)
+                    action.bolus = 0
 
                 self.controller.current_basal_rate = action.basal
 
@@ -122,6 +124,7 @@ class SimObjectForPaper(SimObj):
                 if current_day != self.env.time.day:
                     current_day = self.env.time.day
                     day_counter -= 1
+                    food_counter = 0
 
             self.controller.theta = list(theta_init.calculate_theta())
             self.save((basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate, self.controller.theta))
@@ -138,7 +141,7 @@ class SimObjectForPaper(SimObj):
 
 
         CHO_estimation_uncertainity = 0
-
+        food_counter = 0
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate and self.plotting:
