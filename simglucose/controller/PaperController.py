@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, time
 import numpy as np
 import math
 
-percent_5 = False
+percent_5 = True
 
 sign = lambda x: math.copysign(1, x)
 
@@ -77,15 +77,15 @@ class PaperRLController(Controller):
 
         self.previous_basal_rate = self.current_basal_rate
 
-        new_basal_rate = self.current_basal_rate + self.m * P * self.current_basal_rate
+        br_change = self.m * P * self.current_basal_rate
 
         # uncomment to enable 5 % change
 
-        if abs(new_basal_rate / self.current_basal_rate) > 0.05 and percent_5:
-            self.current_basal_rate += self.current_basal_rate * 0.05 * sign(new_basal_rate)
+        if abs(br_change / self.current_basal_rate) > 0.05 and percent_5:
+            self.current_basal_rate += self.current_basal_rate * 0.05 * sign(br_change)
             print(" used 5 % changed")
         else:
-            self.current_basal_rate = new_basal_rate
+            self.current_basal_rate += br_change
             print(" didn't use 5 % changed")
         return self.current_basal_rate
 
@@ -139,7 +139,7 @@ class PaperRLController(Controller):
 
         Pe = Pd + np.random.normal(0, sigma)
 
-        cost = 1 * F[0] + 10 * F[1]
+        cost = 1 * F[0] + 100 * F[1]
         previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
         next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
         d = cost + self.gamma * next_value - previous_value
@@ -148,12 +148,9 @@ class PaperRLController(Controller):
 
         self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
 
-        if coming_from:
-            try:
-                self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                    element1, element2 in zip(self.theta, F)]
-            except:
-                print("got exception")
+        if coming_from and sigma > 0.0000001:
+            self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                element1, element2 in zip(self.theta, F)]
         #else:
             #self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 #element1, element2 in zip(self.bolus_theta, F)]
@@ -164,17 +161,16 @@ class PaperRLController(Controller):
 
         l = 1 if (self.current_basal_rate > self.previous_basal_rate and fusion_rate < old_bolus) or (
                     self.current_basal_rate < self.previous_basal_rate and fusion_rate > old_bolus) else 0
-        #l = 0
+        
+        bl_change = (1 - l) * fusion_rate
 
-        new_bolus = old_bolus + (1 - l) * fusion_rate
-
-        if abs(new_bolus / old_bolus) > 0.05 and percent_5:
-            updated_bolus = old_bolus + sign(new_bolus) * old_bolus * 0.05
+        if abs(bl_change / old_bolus) > 0.05 and percent_5:
+            old_bolus += sign(bl_change) * old_bolus * 0.05
             print(" used 5 % changed")
         else:
-            updated_bolus = new_bolus
+            old_bolus += bl_change
             print(" didn't use 5 % changed")
-        return updated_bolus
+        return old_bolus
 
 
 
