@@ -102,24 +102,26 @@ class SimObjectForPaper(SimObj):
                     self.env.render()
 
                 action = self.base_controller.policy(obs, reward, done, **info)
-                obs, reward, done, info = self.env.step(action)
-
+                basal = action.basal
+                bolus = action.bolus
                 basal_array.append(obs.CGM)
                 bolus_array.append(obs.CGM)
                 theta_init.send_glucose(obs.CGM)
 
                 if obs.CHO != 0:
                     previous_food = obs.CHO
-                    food_counter+=1
+                    food_counter += 1
                 if action.bolus != 0.0 and food_counter < 3:
                     bolus_initial_list.append(action.bolus/previous_food)
-                    action.bolus = 0
+                    bolus = 0
 
+                action_to_take = Action(basal = basal, bolus = bolus)
+                obs, reward, done, info = self.env.step(action_to_take)
                 self.controller.current_basal_rate = action.basal
 
                 # ignore, for debug
                 state_bolus = bolus_initial_list[-1] if action.bolus != 0 else 0
-                global_state.append([self.env.time, obs.CGM, obs.CHO, action.basal, action.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
+                global_state.append([self.env.time, obs.CGM, obs.CHO, action_to_take.basal, action_to_take.bolus, basal_array.list[-1], bolus_array.list[-1], state_bolus])
 
                 if current_day != self.env.time.day:
                     current_day = self.env.time.day
