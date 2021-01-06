@@ -33,7 +33,10 @@ def generate(startTime, simTime:timedelta, skip_meals:False):
         for week in range(math.ceil(simTime.days/7)):
             temp = [time for time in meal_dict.keys() if startTime + timedelta(weeks=week) < time < startTime + timedelta(weeks=week+1)]
             for i in range(main_meals_skip_per_week):
-                del meal_dict[random.choice(temp)]
+                # todo this is a hack, use correct fix
+                t = random.choice(temp)
+                if t in meal_dict:
+                    del meal_dict[t]
     
     return dict([(key,value[0]) for key, value in meal_dict.items()])
     
