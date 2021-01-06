@@ -57,8 +57,8 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = True
-
+        self.plotting = False
+        self.plotting_for_debug = True
         self.debug_with_basal = True
 
     def save(self, stuff):
@@ -98,23 +98,29 @@ class SimObjectForPaper(SimObj):
         current_day = self.env.time.day
         food_counter = 0
         bolus_initial_list = []
-        day_counter = 7
+        day_counter = 1
         global_state = []
         previous_food = 0
 
         u2ss, BW, TDI = self.get_patient_bio(info)
         theta_init = ThetaInit(u2ss, BW, TDI)
+        #
+        # #def plot_thread():
+        #     plt.ion()  # enable interactivity
+        #     #fig = plt.figure()  # make a figure
+        #     fig, axis = plt.subplots(2)
+        #     while True:
+        #         if self.animate and self.plotting:
+        #             #drawnow(lambda: plt.plot(time_plot, basal_plot))
+        #
+        #
+        #         time.sleep(0.01)
+        #
+        # #Thread(target=plot_thread).start()
 
-        def plot_thread():
-            plt.ion()  # enable interactivity
-            fig = plt.figure()  # make a figure
+        cgm_for_plot = []
 
-            while True:
-                if self.animate and self.plotting:
-                    drawnow(lambda: plt.plot(time_plot, basal_plot))
-                time.sleep(0.01)
 
-        Thread(target=plot_thread).start()
 
         if not self.previous_data :
             while day_counter > 0:
@@ -127,6 +133,8 @@ class SimObjectForPaper(SimObj):
                 bolus_array.append(obs.CGM)
                 theta_init.send_glucose(obs.CGM)
 
+
+
                 if obs.CHO != 0:
                     previous_food = obs.CHO
                     #food_counter += 1
@@ -137,6 +145,9 @@ class SimObjectForPaper(SimObj):
 
 
                 action_to_take = Action(basal = basal, bolus = bolus)
+                cgm_for_plot.append(obs.CGM)
+                basal_plot.append(action.basal)
+                time_plot.append(self.env.time)
                 obs, reward, done, info = self.env.step(action_to_take)
                 self.controller.current_basal_rate = action.basal
 
@@ -149,9 +160,10 @@ class SimObjectForPaper(SimObj):
                     day_counter -= 1
                     #food_counter = 0
 
-                basal_plot.append(action.basal)
-                time_plot.append(self.env.time)
 
+
+
+                plt.pause(0.001)
                 if self.animate and self.plotting:
                     self.env.render()
 
@@ -198,16 +210,28 @@ class SimObjectForPaper(SimObj):
             else:
                 bolus = 0.0
 
-            basal_plot.append(basal_rate)
-            time_plot.append(self.env.time)
 
 
             current_day = self.env.time.day
             action = Action(basal=basal_rate, bolus=bolus)
 
-
+            cgm_for_plot.append(obs.CGM)
+            basal_plot.append(action.basal)
+            time_plot.append(self.env.time)
             obs, reward, done, info = self.env.step(action)
 
+
+
+
+
+        fig, axis = plt.subplots(2)
+        if self.plotting_for_debug:
+            plt.show(block=False)
+
+        axis[0].set_title(" CGM")
+        axis[1].set_title(" Basal Rate")
+        axis[0].plot(time_plot, cgm_for_plot)
+        axis[1].plot(time_plot, basal_plot)
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
 
@@ -216,4 +240,5 @@ class SimObjectForPaper(SimObj):
         while self.animate and self.plotting:
             self.env.render()
             time.sleep(0.01)
+
 

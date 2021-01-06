@@ -22,7 +22,7 @@ matplotlib.use("TkAgg")
 
 path2 = './results/testPaperController'
 
-sim_time = timedelta(weeks=10)
+sim_time = timedelta(days=5)
 
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
