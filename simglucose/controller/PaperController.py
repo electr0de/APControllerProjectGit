@@ -1,5 +1,6 @@
 from functools import partial
 from pprint import pprint
+import matplotlib.pyplot as plt
 
 #import test2
 from simglucose.controller.base import Controller
@@ -16,7 +17,7 @@ normalize_f = lambda x: (x - 39) / (600 - 39)
 class PaperRLController(Controller):
 
     def __init__(self, a_hyper=1, a_hypo=10, current_breakfast_bolus=0.0, current_lunch_bolus=0.0,
-                 current_dinner_bolus=0.0, current_basal_rate=0.0, init_state=None):
+                 current_dinner_bolus=0.0, current_basal_rate=0.0,current_snack_bolus = 0.0,  init_state=None):
         super().__init__(init_state)
         np.random.seed(1)
 
@@ -28,7 +29,9 @@ class PaperRLController(Controller):
         self.current_breakfast_bolus = current_breakfast_bolus  # bolus means IC ratio
         self.current_lunch_bolus = current_lunch_bolus
         self.current_dinner_bolus = current_dinner_bolus
-        self.theta = np.random.rand(2).tolist()
+        #self.current_snack_bolus = current_snack_bolus
+        self.basal_theta = []
+        self.bolus_theta = []
         #np.random.seed(2)
         #self.bolus_theta = np.random.rand(2).tolist()
         self.h = 0.5
@@ -42,6 +45,21 @@ class PaperRLController(Controller):
         self.z = [0.0, 0.0]
         self.a = 0.5
         self.beta = 0.5
+        self.beta_basal = 0.5
+        self.value_factor = 10
+        # self.time_array = []
+        # self.theta_array_1 = []
+        # self.theta_array_2 = []
+        # self.bolus_time_array = []
+        # self.F_1_array = []
+        # self.F_2_array = []
+        #plt.figure(200)
+        #self.fig, self.axis = plt.subplots(4)
+        #plt.show()
+        #self.axis[0].set_title(" Hyper feature for basal")
+        #self.axis[1].set_title(" Hypo feature for basal")
+        #self.axis[2].set_title("Hyper theta for basal")
+        #self.axis[3].set_title(" Hypo theta for basal")
 
     def extract_features(self, array):
         M_hyper = []
@@ -59,9 +77,20 @@ class PaperRLController(Controller):
 
         return (F_hyper, F_hypo)
 
-    def calculate_basal(self, previous_state, basal_array):
+    def calculate_basal(self, previous_state, basal_array, time):
         F_hyper, F_hypo = self.extract_features(basal_array)
         F_hyper_prev, F_hypo_prev = self.extract_features(previous_state)
+
+        #
+        # self.F_1_array.append(F_hyper)
+        # self.F_2_array.append(F_hypo)
+        # self.time_array.append(time)
+        #
+        # self.axis[0].plot(self.time_array, self.F_1_array)
+        #
+        # self.axis[1].plot(self.time_array, self.F_2_array)
+        #
+        # plt.pause(0.001)
 
         Ps = None
         if F_hypo == 0.0:
@@ -80,7 +109,7 @@ class PaperRLController(Controller):
         br_change = self.m * P * self.current_basal_rate
 
         # uncomment to enable 5 % change
-
+        #percent_value = 0
         if abs(br_change / self.current_basal_rate) > percent_value:
             self.current_basal_rate += self.current_basal_rate * percent_value * sign(br_change)
             print(" used % changed")
@@ -89,10 +118,19 @@ class PaperRLController(Controller):
             print(" didn't use % changed")
         return self.current_basal_rate
 
-    def calculate_bolus(self, previous_state, next_state, food_counter):
+    def calculate_bolus(self, previous_state, next_state, food_counter, time):
         F_hyper, F_hypo = self.extract_features(next_state)
 
         F_hyper_prev, F_hypo_prev = self.extract_features(previous_state)
+
+        #
+        # self.F_1_array.append(F_hyper)
+        # self.F_2_array.append(F_hypo)
+        # self.bolus_time_array.append(time)
+        #
+        # self.axis[0].plot(self.bolus_time_array, self.F_1_array)
+        # self.axis[1].plot(self.bolus_time_array, self.F_2_array)
+
 
         Ps = None
         if F_hypo == 0.0:
@@ -117,17 +155,19 @@ class PaperRLController(Controller):
         if food_counter == 2:
             self.current_dinner_bolus = self.update_bolus(self.current_dinner_bolus, P)
             return self.current_dinner_bolus
-
+        #if food_counter == 3:
+            #self.current_snack_bolus = self.update_bolus(self.current_snack_bolus, P)
+            #return self.current_snack_bolus
         return 0.0
 
     def perform_update(self, Ps, F_old, F, coming_from):
-        """
+
         if coming_from:
             theta = self.basal_theta
         else:
             theta = self.bolus_theta
-        """
-        theta = self.theta
+
+        #theta = self.theta
 
         print(f"theta: {theta}")
 
@@ -139,7 +179,7 @@ class PaperRLController(Controller):
 
         Pe = Pd + np.random.normal(0, sigma)
 
-        cost = 1 * F[0] + 10 * F[1]
+        cost = 1 * F[0] + self.value_factor * F[1]
         previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
         next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
         d = cost + self.gamma * next_value - previous_value
@@ -149,13 +189,19 @@ class PaperRLController(Controller):
         self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
 
         if coming_from:
-            self.theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.theta, F)]
-        #else:
-            #self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                #element1, element2 in zip(self.bolus_theta, F)]
+            self.basal_theta = [element1 - self.beta_basal * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                element1, element2 in zip(self.basal_theta, F)]
+        else:
+            self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+                                element1, element2 in zip(self.bolus_theta, F)]
 
         assert sigma > 0.0000001, "sigma is too low"
+        # self.theta_array_1.append(self.theta[0])
+        # self.theta_array_2.append(self.theta[1])
+        # self.axis[2].plot(self.time_array, self.theta_array_1)
+        # self.axis[3].plot(self.time_array, self.theta_array_2)
+
+
 
         return Pe
 

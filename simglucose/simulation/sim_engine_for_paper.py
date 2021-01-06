@@ -98,8 +98,7 @@ class SimObjectForPaper(SimObj):
 
         if not self.previous_data :
             while day_counter > 0:
-                if self.animate and self.plotting:
-                    self.env.render()
+
 
                 action = self.base_controller.policy(obs, reward, done, **info)
                 basal = action.basal
@@ -110,12 +109,13 @@ class SimObjectForPaper(SimObj):
 
                 if obs.CHO != 0:
                     previous_food = obs.CHO
-                    food_counter += 1
+                    #food_counter += 1
                 if action.bolus != 0.0 :
                     bolus_initial_list.append(action.bolus/previous_food)
-                    if food_counter == 2:
-                        bolus = 0
-
+                    #if food_counter == 4:
+                        #bolus = 0
+                    if self.animate and self.plotting:
+                        self.env.render()
 
                 action_to_take = Action(basal = basal, bolus = bolus)
                 obs, reward, done, info = self.env.step(action_to_take)
@@ -128,11 +128,12 @@ class SimObjectForPaper(SimObj):
                 if current_day != self.env.time.day:
                     current_day = self.env.time.day
                     day_counter -= 1
-                    food_counter = 0
+                    #food_counter = 0
 
-            self.controller.theta = list(theta_init.calculate_theta())
-            self.save((basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate, self.controller.theta))
-            print(f"Initialization days over, theta initialized to {self.controller.theta}")
+            self.controller.basal_theta = list(theta_init.calculate_theta())
+            self.controller.bolus_theta = list(theta_init.calculate_theta())
+#            self.save((basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate, self.controller.theta))
+            print(f"Initialization days over, theta initialized to {self.controller.basal_theta}")
             # input("ENTER to continue.....")
         else:
             basal_array, bolus_array, bolus_initial_list, self.controller.current_basal_rate, self.controller.theta = self.previous_data
@@ -142,20 +143,20 @@ class SimObjectForPaper(SimObj):
             self.controller.current_breakfast_bolus = bolus_initial_list[-2-2]
             self.controller.current_lunch_bolus = bolus_initial_list[-2-1]
             self.controller.current_dinner_bolus = bolus_initial_list[-2]
-
+            #self.controller.current_snack_bolus = bolus_initial_list[-1]
 
         CHO_estimation_uncertainity = 0
         food_counter = 0
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
-            if self.animate and self.plotting:
-                self.env.render()
+
 
             if current_day != self.env.time.day:
                 basal_rate = self.controller.calculate_basal(basal_array.list[:int(24 * 60 / 3)],
-                                                             basal_array.list[int(24 * 60 / 3):int(24 * 60 * 2 / 3)])
+                                                             basal_array.list[int(24 * 60 / 3):int(24 * 60 * 2 / 3)], self.env.time)
                 print(f"New calculated basal is {basal_rate}")
                 food_counter = 0
+
             else:
                 basal_array.append(obs.CGM)
                 basal_rate = self.controller.current_basal_rate
@@ -165,9 +166,11 @@ class SimObjectForPaper(SimObj):
                 temp_meal = obs.CHO + obs.CHO * cho / 100
                 bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)],
                                                         bolus_array.list[int(24*60/3):int(24*60*2/3)],
-                                                        food_counter) * temp_meal
+                                                        food_counter, self.env.time) * temp_meal
                 print(f"New calculated bolus is {bolus}")
                 food_counter += 1
+                if self.animate and self.plotting:
+                    self.env.render()
             else:
                 bolus_array.append(obs.CGM)
                 bolus = 0.0
