@@ -1,6 +1,10 @@
 import random
 import time
 import logging
+from threading import Thread
+
+from drawnow import drawnow
+
 from simglucose.simulation.sim_engine import SimObj
 from simglucose.controller.base import Action
 import numpy as np
@@ -10,7 +14,12 @@ import pandas as pd
 from simglucose.simulation.theta_init import ThetaInit
 logger = logging.getLogger(__name__)
 
+import matplotlib.pyplot as plt
+
 import keyboard
+
+basal_plot = []
+time_plot = []
 
 
 class ListForBolus:
@@ -48,7 +57,7 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = False
+        self.plotting = True
 
         self.debug_with_basal = True
 
@@ -79,7 +88,7 @@ class SimObjectForPaper(SimObj):
     def simulate(self):
         obs, reward, done, info = self.env.reset()
 
-        # keyboard.add_hotkey('alt+p', self.toggle_plotting)
+        keyboard.add_hotkey('alt+p', self.toggle_plotting)
 
         tic = time.time()
 
@@ -95,6 +104,17 @@ class SimObjectForPaper(SimObj):
 
         u2ss, BW, TDI = self.get_patient_bio(info)
         theta_init = ThetaInit(u2ss, BW, TDI)
+
+        def plot_thread():
+            plt.ion()  # enable interactivity
+            fig = plt.figure()  # make a figure
+
+            while True:
+                if self.animate and self.plotting:
+                    drawnow(lambda: plt.plot(time_plot, basal_plot))
+                time.sleep(0.01)
+
+        Thread(target=plot_thread).start()
 
         if not self.previous_data :
             while day_counter > 0:
@@ -114,8 +134,7 @@ class SimObjectForPaper(SimObj):
                     bolus_initial_list.append(action.bolus/previous_food)
                     #if food_counter == 4:
                         #bolus = 0
-                    if self.animate and self.plotting:
-                        self.env.render()
+
 
                 action_to_take = Action(basal = basal, bolus = bolus)
                 obs, reward, done, info = self.env.step(action_to_take)
@@ -129,6 +148,12 @@ class SimObjectForPaper(SimObj):
                     current_day = self.env.time.day
                     day_counter -= 1
                     #food_counter = 0
+
+                basal_plot.append(action.basal)
+                time_plot.append(self.env.time)
+
+                if self.animate and self.plotting:
+                    self.env.render()
 
             self.controller.basal_theta = list(theta_init.calculate_theta())
             self.controller.bolus_theta = list(theta_init.calculate_theta())
@@ -172,6 +197,9 @@ class SimObjectForPaper(SimObj):
                     self.env.render()
             else:
                 bolus = 0.0
+
+            basal_plot.append(basal_rate)
+            time_plot.append(self.env.time)
 
 
             current_day = self.env.time.day
