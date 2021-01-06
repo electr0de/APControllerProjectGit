@@ -48,7 +48,7 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = False
+        self.plotting = True
 
         self.debug_with_basal = True
 

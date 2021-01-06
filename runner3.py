@@ -27,15 +27,19 @@ sim_time = timedelta(weeks=10)
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
 
-patient = T1DPatient.withName('adult#003')
-sensor = CGMSensor.withName('Dexcom', seed=1)
+patient = T1DPatient.withName('adult#004')
+patient2 = T1DPatient.withName('child#006')
+patient3 = T1DPatient.withName('adolescent#002')
+sensor = CGMSensor.withName('Dexcom', seed=5)
 
 pump = InsulinPump.withName('Insulet')
 
-scenario=CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
+scenario1 = CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
+scenario2 = CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=True)
 
 zero_scenario = ZeroScenario(start_time=start_time)
-env = T1DSimEnv(patient, sensor, pump, scenario)
+env = T1DSimEnv(patient, sensor, pump, scenario1)
+env2 = T1DSimEnv(patient, sensor, pump, scenario2)
 
 # Create a controller
 RLController = PaperRLController()
