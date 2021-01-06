@@ -48,7 +48,7 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = True
+        self.plotting = False
 
         self.debug_with_basal = True
 
@@ -149,7 +149,8 @@ class SimObjectForPaper(SimObj):
         food_counter = 0
 
         while self.env.time < self.env.scenario.start_time + self.sim_time:
-
+            basal_array.append(obs.CGM)
+            bolus_array.append(obs.CGM)
 
             if current_day != self.env.time.day:
                 basal_rate = self.controller.calculate_basal(basal_array.list[:int(24 * 60 / 3)],
@@ -158,22 +159,20 @@ class SimObjectForPaper(SimObj):
                 food_counter = 0
 
             else:
-                basal_array.append(obs.CGM)
                 basal_rate = self.controller.current_basal_rate
 
             if obs.CHO != 0:
                 cho = random.randint(-CHO_estimation_uncertainity, CHO_estimation_uncertainity)
                 temp_meal = obs.CHO + obs.CHO * cho / 100
-                bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)],
-                                                        bolus_array.list[int(24*60/3):int(24*60*2/3)],
+                bolus = self.controller.calculate_bolus(bolus_array.list[:int(24*60/3)], bolus_array.list[int(24*60/3):int(24*60*2/3)],
                                                         food_counter, self.env.time) * temp_meal
                 print(f"New calculated bolus is {bolus}")
                 food_counter += 1
                 if self.animate and self.plotting:
                     self.env.render()
             else:
-                bolus_array.append(obs.CGM)
                 bolus = 0.0
+
 
             current_day = self.env.time.day
             action = Action(basal=basal_rate, bolus=bolus)

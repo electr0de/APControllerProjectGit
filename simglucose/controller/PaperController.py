@@ -210,8 +210,9 @@ class PaperRLController(Controller):
 
         l = 1 if (self.current_basal_rate > self.previous_basal_rate and fusion_rate < old_bolus) or (
                     self.current_basal_rate < self.previous_basal_rate and fusion_rate > old_bolus) else 0
-        
-        bl_change = (1 - l) * fusion_rate
+
+        cir_final = l * old_bolus + (1 - l) + fusion_rate
+        bl_change = cir_final - old_bolus
 
         if abs(bl_change / old_bolus) > percent_value:
             old_bolus += sign(bl_change) * old_bolus * percent_value
