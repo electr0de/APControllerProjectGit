@@ -98,7 +98,7 @@ class SimObjectForPaper(SimObj):
         current_day = self.env.time.day
         food_counter = 0
         bolus_initial_list = []
-        day_counter = 1
+        day_counter = 7
         global_state = []
         previous_food = 0
 
