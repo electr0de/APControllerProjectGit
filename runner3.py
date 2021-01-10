@@ -19,9 +19,9 @@ import pandas as pd
 from os import path
 from simglucose.simulation.zero_scenario import ZeroScenario
 matplotlib.use("TkAgg")
-
+from simglucose.controller.basal_bolus_ctrller import BBController
 path2 = './results/testPaperController'
-
+from simglucose.simulation.sim_engine import SimObj
 sim_time = timedelta(weeks=10)
 
 now = datetime.now()
@@ -55,7 +55,7 @@ else:
 
 # Put them together to create a simulation object
 s1 = SimObjectForPaper(env, RLController, sim_time, basic_controller, True, path2, previous_data)
-
+s2 = SimObj(env, basic_controller, sim_time, True, path)
 #
 # patient2 = T1DPatient.withName('adult#009')
 # env2 = T1DSimEnv(patient2, sensor, pump, scenario)
@@ -70,7 +70,7 @@ s1 = SimObjectForPaper(env, RLController, sim_time, basic_controller, True, path
 #
 # s3 = SimObj(env2, controller3, sim_time, animate=False, path=path)
 
-sim_instances = [s1]
+sim_instances = [s2]
 results = batch_sim(sim_instances)
 
 df = pd.concat(results, keys=[s.env.patient.name for s in sim_instances])
