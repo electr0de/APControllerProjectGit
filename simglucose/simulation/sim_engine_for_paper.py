@@ -57,9 +57,9 @@ class SimObjectForPaper(SimObj):
         self.base_controller = base_controller
         self.path = "results/PaperControllerTestStuff"
         self.previous_data = previous_data
-        self.plotting = False
+        self.plotting = True
         self.plotting_for_debug = True
-        self.debug_with_basal = True
+        self.debug_with_basal = False
 
     def save(self, stuff):
         with open(self.path+"/3dayObject.pkl", "wb") as f:

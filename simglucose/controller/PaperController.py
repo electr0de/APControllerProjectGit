@@ -178,22 +178,22 @@ class PaperRLController(Controller):
         sigma = self.c_sigma * (F[0] ** 2 + F[1] ** 2)
 
         Pe = Pd + np.random.normal(0, sigma)
-
-        cost = 1 * F[0] + self.value_factor * F[1]
-        previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
-        next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
-        d = cost + self.gamma * next_value - previous_value
-
-        self.w = [element1 + self.a * d * element2 for element1, element2 in zip(self.w, self.z)]
-
-        self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
-
-        if coming_from:
-            self.basal_theta = [element1 - self.beta_basal * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.basal_theta, F)]
-        else:
-            self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
-                                element1, element2 in zip(self.bolus_theta, F)]
+        #
+        # cost = 1 * F[0] + self.value_factor * F[1]
+        # previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
+        # next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
+        # d = cost + self.gamma * next_value - previous_value
+        #
+        # self.w = [element1 + self.a * d * element2 for element1, element2 in zip(self.w, self.z)]
+        #
+        # self.z = [self._lambda * element1 + element2 for element1, element2 in zip(self.z, F)]
+        #
+        # if coming_from:
+        #     self.basal_theta = [element1 - self.beta_basal * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+        #                         element1, element2 in zip(self.basal_theta, F)]
+        # else:
+        #     self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
+        #                         element1, element2 in zip(self.bolus_theta, F)]
 
         assert sigma > 0.0000001, "sigma is too low"
         # self.theta_array_1.append(self.theta[0])
