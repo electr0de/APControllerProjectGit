@@ -24,7 +24,7 @@ class MyController(Controller):
         self.num_actions = env.action_space.shape[0]
         print("Size of Action Space ->  {}".format(self.num_actions))
 
-        self.upper_bound = env.action_space.high[0]
+        self.upper_bound = 10.0
         self.lower_bound = env.action_space.low[0]
 
         print("Max Value of Action ->  {}".format(self.upper_bound))
@@ -279,7 +279,11 @@ class Buffer:
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
 
 
-std_dev = 0.2
+
+
+
+
+std_dev = 0.05
 ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
 
 # Making the weights equal initially

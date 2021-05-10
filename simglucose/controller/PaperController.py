@@ -2,9 +2,9 @@ from functools import partial
 from pprint import pprint
 import matplotlib.pyplot as plt
 
-#import test2
+# import test2
 from simglucose.controller.base import Controller
-from datetime import datetime, timedelta, time
+#from datetime import datetime, timedelta, time
 import numpy as np
 import math
 
@@ -14,10 +14,11 @@ sign = lambda x: math.copysign(1, x)
 
 normalize_f = lambda x: (x - 39) / (600 - 39)
 
+
 class PaperRLController(Controller):
 
     def __init__(self, a_hyper=1, a_hypo=10, current_breakfast_bolus=0.0, current_lunch_bolus=0.0,
-                 current_dinner_bolus=0.0, current_basal_rate=0.0,current_snack_bolus = 0.0,  init_state=None):
+                 current_dinner_bolus=0.0, current_basal_rate=0.0, current_snack_bolus=0.0, init_state=None):
         super().__init__(init_state)
         np.random.seed(1)
 
@@ -29,17 +30,17 @@ class PaperRLController(Controller):
         self.current_breakfast_bolus = current_breakfast_bolus  # bolus means IC ratio
         self.current_lunch_bolus = current_lunch_bolus
         self.current_dinner_bolus = current_dinner_bolus
-        #self.current_snack_bolus = current_snack_bolus
+        # self.current_snack_bolus = current_snack_bolus
         self.basal_theta = []
         self.bolus_theta = []
-        #np.random.seed(2)
-        #self.bolus_theta = np.random.rand(2).tolist()
+        # np.random.seed(2)
+        # self.bolus_theta = np.random.rand(2).tolist()
         self.h = 0.5
         self.c_sigma = 0.05
         self.m = 0.5
         self.previous_basal_rate = 0.0
         np.random.seed(55)
-        self.w = (np.random.rand(2)*2-1).tolist()
+        self.w = (np.random.rand(2) * 2 - 1).tolist()
         self._lambda = 0.5
         self.gamma = 0.9
         self.z = [0.0, 0.0]
@@ -53,13 +54,18 @@ class PaperRLController(Controller):
         # self.bolus_time_array = []
         # self.F_1_array = []
         # self.F_2_array = []
-        #plt.figure(200)
-        #self.fig, self.axis = plt.subplots(4)
-        #plt.show()
-        #self.axis[0].set_title(" Hyper feature for basal")
-        #self.axis[1].set_title(" Hypo feature for basal")
-        #self.axis[2].set_title("Hyper theta for basal")
-        #self.axis[3].set_title(" Hypo theta for basal")
+        # plt.figure(200)
+        # self.fig, self.axis = plt.subplots(4)
+        # plt.show()
+        # self.axis[0].set_title(" Hyper feature for basal")
+        # self.axis[1].set_title(" Hypo feature for basal")
+        # self.axis[2].set_title("Hyper theta for basal")
+        # self.axis[3].set_title(" Hypo theta for basal")
+
+        self.previous_state_basal = None
+        self.previous_state_breakfast = None
+        self.previous_state_lunch = None
+        self.previous_state_dinner = None
 
     def extract_features(self, array):
         M_hyper = []
@@ -109,7 +115,7 @@ class PaperRLController(Controller):
         br_change = self.m * P * self.current_basal_rate
 
         # uncomment to enable 5 % change
-        #percent_value = 0
+        # percent_value = 0
         if abs(br_change / self.current_basal_rate) > percent_value:
             self.current_basal_rate += self.current_basal_rate * percent_value * sign(br_change)
             print(" used % changed")
@@ -131,7 +137,6 @@ class PaperRLController(Controller):
         # self.axis[0].plot(self.bolus_time_array, self.F_1_array)
         # self.axis[1].plot(self.bolus_time_array, self.F_2_array)
 
-
         Ps = None
         if F_hypo == 0.0:
             Ps = 0
@@ -142,7 +147,7 @@ class PaperRLController(Controller):
 
         assert Ps is not None, "No conditions matched"
 
-        P = self.perform_update(Ps, (F_hyper_prev, F_hypo_prev), (F_hyper, F_hypo), False)
+        P = self.perform_update(Ps, (F_hyper_prev, F_hypo_prev), (F_hyper, F_hypo), False, food_counter)
 
         if food_counter == 0:
             self.current_breakfast_bolus = self.update_bolus(self.current_breakfast_bolus, P)
@@ -155,19 +160,28 @@ class PaperRLController(Controller):
         if food_counter == 2:
             self.current_dinner_bolus = self.update_bolus(self.current_dinner_bolus, P)
             return self.current_dinner_bolus
-        #if food_counter == 3:
-            #self.current_snack_bolus = self.update_bolus(self.current_snack_bolus, P)
-            #return self.current_snack_bolus
+        # if food_counter == 3:
+        # self.current_snack_bolus = self.update_bolus(self.current_snack_bolus, P)
+        # return self.current_snack_bolus
         return 0.0
 
-    def perform_update(self, Ps, F_old, F, coming_from):
+    def perform_update(self, Ps, F_old, F, coming_from, food_counter=None):
 
         if coming_from:
             theta = self.basal_theta
+            previous_state = self.previous_state_basal
         else:
             theta = self.bolus_theta
+            if food_counter == 0:
+                previous_state = self.previous_state_breakfast
+            elif food_counter == 1:
+                previous_state = self.previous_state_lunch
+            elif food_counter == 2:
+                previous_state = self.previous_state_dinner
+            else:
+                return 0
 
-        #theta = self.theta
+        # theta = self.theta
 
         print(f"theta: {theta}")
 
@@ -180,9 +194,14 @@ class PaperRLController(Controller):
         Pe = Pd + np.random.normal(0, sigma)
 
         cost = 1 * F[0] + self.value_factor * F[1]
-        previous_value = sum([element1 * element2 for element1, element2 in zip(F_old, self.w)])
-        next_value = sum([element1 * element2 for element1, element2 in zip(F, self.w)])
-        d = cost + self.gamma * next_value - previous_value
+
+        if not previous_state:
+            previous_state = sum(
+                [((Pe - Pd) / sigma ** 2 * self.h * element1) * element2 for element1, element2 in zip(F_old, self.w)])
+
+        next_value = sum(
+            [((Pe - Pd) / sigma ** 2 * self.h * element1) * element2 for element1, element2 in zip(F, self.w)])
+        d = cost + self.gamma * next_value - previous_state
 
         self.w = [element1 + self.a * d * element2 for element1, element2 in zip(self.w, self.z)]
 
@@ -191,9 +210,17 @@ class PaperRLController(Controller):
         if coming_from:
             self.basal_theta = [element1 - self.beta_basal * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 element1, element2 in zip(self.basal_theta, F)]
+            self.previous_state_basal = next_value
         else:
             self.bolus_theta = [element1 - self.beta * d * (Pe - Pd) / sigma ** 2 * self.h * element2 for
                                 element1, element2 in zip(self.bolus_theta, F)]
+
+            if food_counter == 0:
+                self.previous_state_breakfast = next_value
+            elif food_counter == 1:
+                self.previous_state_lunch = next_value
+            else:
+                self.previous_state_dinner = next_value
 
         assert sigma > 0.0000001, "sigma is too low"
         # self.theta_array_1.append(self.theta[0])
@@ -201,15 +228,13 @@ class PaperRLController(Controller):
         # self.axis[2].plot(self.time_array, self.theta_array_1)
         # self.axis[3].plot(self.time_array, self.theta_array_2)
 
-
-
         return Pe
 
     def update_bolus(self, old_bolus, P):
         fusion_rate = old_bolus + self.m * P * old_bolus
 
         l = 1 if (self.current_basal_rate > self.previous_basal_rate and fusion_rate < old_bolus) or (
-                    self.current_basal_rate < self.previous_basal_rate and fusion_rate > old_bolus) else 0
+                self.current_basal_rate < self.previous_basal_rate and fusion_rate > old_bolus) else 0
 
         # fusion_rate = l * old_bolus + (1 - l) * fusion_rate
         bl_change = fusion_rate - old_bolus
@@ -221,9 +246,6 @@ class PaperRLController(Controller):
             old_bolus += bl_change
             print(" didn't use % changed")
         return old_bolus
-
-
-
 
 # if __name__ == '__main__':
 #

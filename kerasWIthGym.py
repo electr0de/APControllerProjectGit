@@ -7,6 +7,7 @@ Description: Implementing DDPG algorithm on the Inverted Pendulum Problem.
 """
 import os
 import sys
+import traceback
 
 """
 ## Introduction
@@ -274,7 +275,12 @@ exploration.
 
 
 def policy(state, noise_object):
-    sampled_actions = tf.squeeze(actor_model(state))
+    try:
+        temp = actor_model(state)
+        sampled_actions = tf.squeeze(temp)
+    except:
+        traceback.print_exc()
+
     noise = noise_object()
     # Adding noise to action
     sampled_actions = sampled_actions.numpy() + noise
@@ -283,6 +289,15 @@ def policy(state, noise_object):
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
 
     return [np.squeeze(legal_action)]
+    #sampled_actions = tf.squeeze(actor_model(state))
+    #noise = noise_object()
+    # Adding noise to action
+    #sampled_actions = sampled_actions.numpy() + noise
+
+    # We make sure action is within bounds
+    #legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
+
+    #return [np.squeeze(legal_action)]
 
 
 """
@@ -337,9 +352,10 @@ for ep in range(total_episodes):
     while True:
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
-        # env.render()
-
-        tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
+        #env.render()
+        obs_in_nd = np.array([prev_state.CGM])
+        tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+        #tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
         action = policy(tf_prev_state, ou_noise)
 
@@ -347,7 +363,7 @@ for ep in range(total_episodes):
         state, reward, done, info = env.step(action[0])
         #print(f"difference in rewards : {reward-previous_reward}")
         #previous_reward = reward
-        buffer.record((prev_state, action, reward, state))
+        buffer.record((prev_state.CGM, action, reward, state.CGM))
         episodic_reward += reward
 
         buffer.learn()
@@ -385,11 +401,11 @@ more episodes to obtain good results
 """
 
 # Save the weights
-actor_model.save_weights("pendulum_actor.h5")
-critic_model.save_weights("pendulum_critic.h5")
+actor_model.save_weights("bg_actor.h5")
+critic_model.save_weights("bg_critic.h5")
 
-target_actor.save_weights("pendulum_target_actor.h5")
-target_critic.save_weights("pendulum_target_critic.h5")
+target_actor.save_weights("bg_actor.h5")
+target_critic.save_weights("bg_critic.h5")
 
 """
 Before Training:

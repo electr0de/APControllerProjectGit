@@ -4,6 +4,7 @@ import os
 import tensorflow as tf
 import numpy as np
 from simglucose.controller.base import Action
+import matplotlib.pyplot as plt
 pathos = True
 try:
     from pathos.multiprocessing import ProcessPool as Pool
@@ -90,10 +91,15 @@ class SimObjForKeras(SimObj):
                  sim_time,
                  animate,
                  path)
+        self.average_reward_list = []
 
     def simulate(self):
         obs, reward, done, info = self.env.reset()
         tic = time.time()
+        episodic_reward = 0
+        ep_reward_list = []
+        avg_reward_list = []
+        ep = 0
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
                 self.env.render()
@@ -104,10 +110,19 @@ class SimObjForKeras(SimObj):
             act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
 
             obs, reward, done, info = self.env.step(act_in_sim_form)
+            episodic_reward += reward
             if done:
                 self.env.reset()
                 print("dead")
-            print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
+                ep_reward_list.append(episodic_reward)
+                episodic_reward = 0
+
+                # Mean of last 40 episodes
+                avg_reward = np.mean(ep_reward_list[-40:])
+                #print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+                avg_reward_list.append(avg_reward)
+                ep = ep + 1
+            #print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
             obs_in_nd = np.array([obs.CGM])
             tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
 
@@ -115,4 +130,6 @@ class SimObjForKeras(SimObj):
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
+        self.average_reward_list = avg_reward_list
+
 

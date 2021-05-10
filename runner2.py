@@ -1,6 +1,6 @@
 from gym.envs.registration import register
 
-
+import matplotlib.pyplot as plt
 from simglucose.analysis.report import report
 from simglucose.controller.pid_ctrller import PIDController
 from simglucose.simulation.env import T1DSimEnv
@@ -9,7 +9,7 @@ from simglucose.sensor.cgm import CGMSensor
 from simglucose.actuator.pump import InsulinPump
 from simglucose.patient.t1dpatient import T1DPatient
 from simglucose.simulation.scenario_gen import RandomScenario
-from simglucose.simulation.scenario import CustomScenario
+from simglucose.simulation.scenario import CustomScenario,ZeroScenario
 from simglucose.simulation.sim_engine import SimObj, sim, batch_sim,SimObjForKeras
 from datetime import timedelta
 from datetime import datetime
@@ -47,7 +47,7 @@ patient = T1DPatient.withName('adolescent#002')
 sensor = CGMSensor.withName('Dexcom', seed=1)
 
 pump = InsulinPump.withName('Insulet')
-scenario=CustomScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
+scenario=ZeroScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
 env = T1DSimEnv(patient, sensor, pump, scenario)
 
 # Create a controller
@@ -72,6 +72,10 @@ s1 = SimObjForKeras(env, controller1, sim_time, animate=False, path=path)
 
 sim_instances = [s1]
 results = batch_sim(sim_instances)
-
+plt.plot(s1.average_reward_list)
+plt.xlabel("Episode")
+plt.ylabel("Avg. Epsiodic Reward")
+plt.show()
+plt.savefig('average_reward.png')
 df = pd.concat(results, keys=[s.env.patient.name for s in sim_instances])
 results, ri_per_hour, zone_stats, figs, axes = report(df, path)

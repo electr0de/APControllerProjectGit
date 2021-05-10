@@ -101,3 +101,7 @@ def parseTime(time, start_time):
     else:
         raise ValueError('Expect time to be int, float, timedelta, datetime')
     return t
+
+class ZeroScenario(CustomScenario):
+    def get_action(self, t):
+        return Action(meal=0)
