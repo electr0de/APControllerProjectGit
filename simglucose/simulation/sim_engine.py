@@ -1,6 +1,8 @@
 import logging
 import time
 import os
+from pprint import pprint
+
 import tensorflow as tf
 import numpy as np
 from simglucose.controller.base import Action
@@ -111,7 +113,8 @@ class SimObjForKeras(SimObj):
 
             obs, reward, done, info = self.env.step(act_in_sim_form)
             episodic_reward += reward
-            if done:
+            if done or obs.CGM > 180 or obs.CGM < 70:
+                print(self.env.time - self.env.scenario.start_time)
                 self.env.reset()
                 print("dead")
                 ep_reward_list.append(episodic_reward)
@@ -130,6 +133,7 @@ class SimObjForKeras(SimObj):
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
+        pprint(avg_reward_list)
         self.average_reward_list = avg_reward_list
 
 

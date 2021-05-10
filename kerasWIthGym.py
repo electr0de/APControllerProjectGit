@@ -53,7 +53,7 @@ from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
 
-sys.stdout = open(os.devnull, 'w')
+# sys.stdout = open(os.devnull, 'w')
 """
 We use [OpenAIGym](http://gym.openai.com/docs) to create the environment.
 We will use the `upper_bound` parameter to scale our actions later.
@@ -318,8 +318,8 @@ target_actor.set_weights(actor_model.get_weights())
 target_critic.set_weights(critic_model.get_weights())
 
 # Learning rate for actor-critic models
-critic_lr = 0.002
-actor_lr = 0.001
+critic_lr = 0.2
+actor_lr = 0.3
 
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
@@ -348,7 +348,7 @@ for ep in range(total_episodes):
 
     prev_state = env.reset()
     episodic_reward = 0
-    #previous_reward = 0
+    previous_reward = 0
     while True:
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
@@ -361,8 +361,9 @@ for ep in range(total_episodes):
 
         # Recieve state and reward from environment.
         state, reward, done, info = env.step(action[0])
-        #print(f"difference in rewards : {reward-previous_reward}")
-        #previous_reward = reward
+        reward = -reward
+        # print(f"difference in rewards : {reward-previous_reward}")
+        # previous_reward = reward
         buffer.record((prev_state.CGM, action, reward, state.CGM))
         episodic_reward += reward
 

@@ -38,7 +38,7 @@ register(
 
 path = './results/testKeras'
 
-sim_time = timedelta(weeks=2)
+sim_time = timedelta(days=1)
 
 now = datetime.now()
 start_time = datetime.combine(now.date(), datetime.min.time())
