@@ -45,7 +45,7 @@ class ThetaInit:
         return self.Wh / TE, self.Wl / TE
 
     def _calc_basal(self):
-        return self.u2ss * self.BW / 6000
+        return self.u2ss * self.BW / 6000 * 60
 
     def _calc_u0(self, basal):
         if basal >= 1.25:

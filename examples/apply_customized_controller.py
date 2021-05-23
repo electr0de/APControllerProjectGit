@@ -44,6 +44,7 @@ class MyController(Controller):
         self.ep_reward_list = []
         self.avg_reward_list = []
         self.episodic_reward = 0
+
     def policy(self, observation, reward, done, **info):
         '''
         Every controller must have this implementation!
@@ -67,6 +68,7 @@ class MyController(Controller):
 
 
         return action
+
     def learn(self, prev_state,action,reward,state):
         self.buffer.record((prev_state, action, reward, state))
         self.episodic_reward += reward

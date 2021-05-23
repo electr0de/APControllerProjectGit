@@ -7,6 +7,7 @@ import tensorflow as tf
 import numpy as np
 from simglucose.controller.base import Action
 import matplotlib.pyplot as plt
+
 pathos = True
 try:
     from pathos.multiprocessing import ProcessPool as Pool
@@ -88,20 +89,22 @@ class SimObjForKeras(SimObj):
                  animate=True,
                  path=None):
         super().__init__(
-                 env,
-                 controller,
-                 sim_time,
-                 animate,
-                 path)
+            env,
+            controller,
+            sim_time,
+            animate,
+            path)
         self.average_reward_list = []
 
     def simulate(self):
+
         obs, reward, done, info = self.env.reset()
         tic = time.time()
         episodic_reward = 0
         ep_reward_list = []
         avg_reward_list = []
         ep = 0
+
         while self.env.time < self.env.scenario.start_time + self.sim_time:
             if self.animate:
                 self.env.render()
@@ -122,10 +125,10 @@ class SimObjForKeras(SimObj):
 
                 # Mean of last 40 episodes
                 avg_reward = np.mean(ep_reward_list[-40:])
-                #print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+                # print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
                 avg_reward_list.append(avg_reward)
                 ep = ep + 1
-            #print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
+            # print(f"Reward is {reward} insulin value is {act_in_sim_form.basal}")
             obs_in_nd = np.array([obs.CGM])
             tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
 
@@ -137,3 +140,122 @@ class SimObjForKeras(SimObj):
         self.average_reward_list = avg_reward_list
 
 
+class SimObjForKeras2(SimObj):
+    def __init__(self,
+                 env,
+                 controller,
+                 sim_time,
+                 animate=False,
+                 path=None,
+                 sample_time=3):
+        super().__init__(
+            env,
+            controller,
+            sim_time,
+            animate,
+            path)
+        self.sample_time = sample_time
+
+    def simulate(self):
+
+        obs, _, done, info = self.env.reset()
+
+        glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
+
+        reward = self.get_reward(obs.CGM, glucose_rate)
+        tic = time.time()
+        ep = 0
+        IOB = 0.0
+
+        while self.env.time < self.env.scenario.start_time + self.sim_time:
+            if self.animate:
+                self.env.render()
+
+            obs_in_nd = np.array([obs.CGM, glucose_rate, IOB])
+
+            tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+
+            previous_state = obs
+
+            action = self.controller.policy(tf_prev_state, reward, done, **info)
+
+            act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
+
+            obs, _, done, info = self.env.step(act_in_sim_form)
+
+            glucose_rate = self.get_glucose_rate(previous_state.CGM, obs.CGM)
+
+            reward = self.get_reward(obs.CGM, glucose_rate)
+
+            IOB = self.get_IOB()
+
+            if done:
+                print(self.env.time - self.env.scenario.start_time)
+                self.env.reset()
+                print("dead")
+
+                ep = ep + 1
+
+            obs_in_nd = np.array([obs.CGM, glucose_rate, IOB])
+
+            tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+
+            self.controller.learn(tf_prev_state, action, reward, tf_current_state)
+
+        toc = time.time()
+        logger.info('Simulation took {} seconds.'.format(toc - tic))
+
+    def get_reward(self, glucose, rate_of_change):
+
+        D_l = abs(glucose - 120.0)
+
+        r_long = 0.0
+
+        if 70 <= glucose <= 180:
+            r_long = -D_l
+        else:
+            r_long = -3 * D_l
+
+        m_target = -1 / 15
+
+        D_r = abs(m_target * (glucose - 120) - rate_of_change)
+
+        r_short = 0.0
+
+        if glucose < 100:
+            if rate_of_change < 0.6:
+                r_short = -5 * D_r
+            elif rate_of_change >= 3:
+                r_short = 0
+            else:
+                r_short = -3 * D_r
+
+        if 100 <= glucose <= 160:
+            if rate_of_change >= 3:
+                r_short = 0
+            else:
+                r_short = -D_r
+
+        if 160 <= glucose < 180:
+            if rate_of_change >= 3:
+                r_short = -5 * D_r
+            else:
+                r_short = -D_r
+        else:
+            if rate_of_change >= 1.5:
+                r_short = -5 * D_r
+            else:
+                r_short = -3 * D_r
+
+        scale = 0.09
+
+        reward = r_short + scale * r_long
+
+        return reward
+
+    def get_glucose_rate(self, previous_glucose, current_glucose):
+
+        return current_glucose - previous_glucose / self.sample_time
+
+    def get_IOB(self):
+        pass

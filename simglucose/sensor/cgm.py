@@ -50,5 +50,18 @@ class CGMSensor(object):
         self._last_CGM = 0
 
 
+class CGMSensorWithoutNoise(CGMSensor):
+    def __init__(self, params, seed=None):
+        super().__init__(params, seed)
+
+    def measure(self, patient):
+        if patient.t % self.sample_time == 0:
+            BG = patient.observation.Gsub
+            CGM = BG
+            CGM = max(CGM, self._params["min"])
+            CGM = min(CGM, self._params["max"])
+            self._last_CGM = CGM
+            return CGM
+
 if __name__ == '__main__':
     pass
