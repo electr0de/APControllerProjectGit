@@ -1,51 +1,11 @@
 """
-Title: Deep Deterministic Policy Gradient (DDPG)
-Author: [amifunny](https://github.com/amifunny)
-Date created: 2020/06/04
-Last modified: 2020/09/21
-Description: Implementing DDPG algorithm on the Inverted Pendulum Problem.
+
 """
 import os
 import sys
 import traceback
 
 """
-## Introduction
-**Deep Deterministic Policy Gradient (DDPG)** is a model-free off-policy algorithm for
-learning continous actions.
-It combines ideas from DPG (Deterministic Policy Gradient) and DQN (Deep Q-Network).
-It uses Experience Replay and slow-learning target networks from DQN, and it is based on
-DPG,
-which can operate over continuous action spaces.
-This tutorial closely follow this paper -
-[Continuous control with deep reinforcement learning](https://arxiv.org/pdf/1509.02971.pdf)
-## Problem
-We are trying to solve the classic **Inverted Pendulum** control problem.
-In this setting, we can take only two actions: swing left or swing right.
-What make this problem challenging for Q-Learning Algorithms is that actions
-are **continuous** instead of being **discrete**. That is, instead of using two
-discrete actions like `-1` or `+1`, we have to select from infinite actions
-ranging from `-2` to `+2`.
-## Quick theory
-Just like the Actor-Critic method, we have two networks:
-1. Actor - It proposes an action given a state.
-2. Critic - It predicts if the action is good (positive value) or bad (negative value)
-given a state and an action.
-DDPG uses two more techniques not present in the original DQN:
-**First, it uses two Target networks.**
-**Why?** Because it add stability to training. In short, we are learning from estimated
-targets and Target networks are updated slowly, hence keeping our estimated targets
-stable.
-Conceptually, this is like saying, "I have an idea of how to play this well,
-I'm going to try it out for a bit until I find something better",
-as opposed to saying "I'm going to re-learn how to play this entire game after every
-move".
-See this [StackOverflow answer](https://stackoverflow.com/a/54238556/13475679).
-**Second, it uses Experience Replay.**
-We store list of tuples `(state, action, reward, next_state)`, and instead of
-learning only from recent experience, we learn from sampling all of our experience
-accumulated so far.
-Now, let's see how is it implemented.
 """
 import gym
 import tensorflow as tf
@@ -55,8 +15,7 @@ import matplotlib.pyplot as plt
 
 # sys.stdout = open(os.devnull, 'w')
 """
-We use [OpenAIGym](http://gym.openai.com/docs) to create the environment.
-We will use the `upper_bound` parameter to scale our actions later.
+
 """
 from gym.envs.registration import register
 register(
@@ -96,7 +55,7 @@ class OUActionNoise:
         self.reset()
 
     def __call__(self):
-        # Formula taken from https://www.wikipedia.org/wiki/Ornstein-Uhlenbeck_process.
+
         x = (
             self.x_prev
             + self.theta * (self.mean - self.x_prev) * self.dt
@@ -115,19 +74,9 @@ class OUActionNoise:
 
 
 """
-The `Buffer` class implements Experience Replay.
+
 ---
-![Algorithm](https://i.imgur.com/mS6iGyJ.jpg)
----
-**Critic loss** - Mean Squared Error of `y - Q(s, a)`
-where `y` is the expected return as seen by the Target network,
-and `Q(s, a)` is action value predicted by the Critic network. `y` is a moving target
-that the critic model tries to achieve; we make this target
-stable by updating the Target model slowly.
-**Actor loss** - This is computed using the mean of the value given by the Critic network
-for the actions taken by the Actor network. We seek to maximize this quantity.
-Hence we update the Actor network so that it produces actions that get
-the maximum predicted value as seen by the Critic, for a given state.
+*
 """
 
 
@@ -141,17 +90,15 @@ class Buffer:
         # Its tells us num of times record() was called.
         self.buffer_counter = 0
 
-        # Instead of list of tuples as the exp.replay concept go
-        # We use different np.arrays for each tuple element
+
         self.state_buffer = np.zeros((self.buffer_capacity, num_states))
         self.action_buffer = np.zeros((self.buffer_capacity, num_actions))
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
         self.next_state_buffer = np.zeros((self.buffer_capacity, num_states))
 
-    # Takes (s,a,r,s') obervation tuple as input
+
     def record(self, obs_tuple):
-        # Set index to zero if buffer_capacity is exceeded,
-        # replacing old records
+
         index = self.buffer_counter % self.buffer_capacity
 
         self.state_buffer[index] = obs_tuple[0]
@@ -161,15 +108,13 @@ class Buffer:
 
         self.buffer_counter += 1
 
-    # Eager execution is turned on by default in TensorFlow 2. Decorating with tf.function allows
-    # TensorFlow to build a static graph out of the logic and computations in our function.
-    # This provides a large speed up for blocks of code that contain many small TensorFlow operations such as this one.
+
     @tf.function
     def update(
         self, state_batch, action_batch, reward_batch, next_state_batch,
     ):
         # Training and updating Actor & Critic networks.
-        # See Pseudo Code.
+
         with tf.GradientTape() as tape:
             target_actions = target_actor(next_state_batch, training=True)
             y = reward_batch + gamma * target_critic(
@@ -186,8 +131,7 @@ class Buffer:
         with tf.GradientTape() as tape:
             actions = actor_model(state_batch, training=True)
             critic_value = critic_model([state_batch, actions], training=True)
-            # Used `-value` as we want to maximize the value given
-            # by the critic for our actions
+
             actor_loss = -tf.math.reduce_mean(critic_value)
 
         actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
@@ -221,12 +165,7 @@ def update_target(target_weights, weights, tau):
 
 
 """
-Here we define the Actor and Critic networks. These are basic Dense models
-with `ReLU` activation.
-Note: We need the initialization for last layer of the Actor to be between
-`-0.003` and `0.003` as this prevents us from getting `1` or `-1` output values in
-the initial stages, which would squash our gradients to zero,
-as we use the `tanh` activation.
+
 """
 
 
@@ -269,8 +208,7 @@ def get_critic():
 
 
 """
-`policy()` returns an action sampled from our Actor network plus some noise for
-exploration.
+
 """
 
 
@@ -289,19 +227,10 @@ def policy(state, noise_object):
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
 
     return [np.squeeze(legal_action)]
-    #sampled_actions = tf.squeeze(actor_model(state))
-    #noise = noise_object()
-    # Adding noise to action
-    #sampled_actions = sampled_actions.numpy() + noise
-
-    # We make sure action is within bounds
-    #legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
-
-    #return [np.squeeze(legal_action)]
 
 
 """
-## Training hyperparameters
+
 """
 
 std_dev = 0.2
@@ -333,9 +262,7 @@ tau = 0.005
 buffer = Buffer(50000, 64)
 
 """
-Now we implement our main training loop, and iterate over episodes.
-We sample actions using `policy()` and train with `learn()` at each time step,
-along with updating the Target networks at a rate `tau`.
+
 """
 
 # To store reward history of each episode
@@ -343,7 +270,7 @@ ep_reward_list = []
 # To store average reward history of last few episodes
 avg_reward_list = []
 
-# Takes about 4 min to train
+
 for ep in range(total_episodes):
 
     prev_state = env.reset()
@@ -353,15 +280,17 @@ for ep in range(total_episodes):
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
         #env.render()
+
         obs_in_nd = np.array([prev_state.CGM])
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+        print(tf_prev_state)
         #tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
         action = policy(tf_prev_state, ou_noise)
 
         # Recieve state and reward from environment.
         state, reward, done, info = env.step(action[0])
-        reward = -reward
+        #reward = -reward
         # print(f"difference in rewards : {reward-previous_reward}")
         # previous_reward = reward
         buffer.record((prev_state.CGM, action, reward, state.CGM))
@@ -391,15 +320,7 @@ plt.xlabel("Episode")
 plt.ylabel("Avg. Epsiodic Reward")
 plt.show()
 plt.savefig('average_reward.png')
-"""
-If training proceeds correctly, the average episodic reward will increase with time.
-Feel free .to try different learning rates, `tau` values, and architectures for the
-Actor and Critic networks.
-The Inverted Pendulum problem has low complexity, but DDPG work great on many other
-problems.
-Another great environment to try this on is `LunarLandingContinuous-v2`, but it will take
-more episodes to obtain good results
-"""
+
 
 # Save the weights
 actor_model.save_weights("bg_actor.h5")
@@ -408,12 +329,3 @@ critic_model.save_weights("bg_critic.h5")
 target_actor.save_weights("bg_actor.h5")
 target_critic.save_weights("bg_critic.h5")
 
-"""
-Before Training:
-![before_img](https://i.imgur.com/ox6b9rC.gif)
-"""
-
-"""
-After 100 episodes:
-![after_img](https://i.imgur.com/eEH8Cz6.gif)
-"""

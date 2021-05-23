@@ -32,7 +32,6 @@ critic_value_history = []
 rewards_history = []
 running_reward = 0
 episode_count = 0
-
 while True:  # Run until solved
     state = env.reset()
     episode_reward = 0
