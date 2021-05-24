@@ -145,9 +145,11 @@ class SimObjForKeras2(SimObj):
                  env,
                  controller,
                  sim_time,
+                 base_controller,
                  animate=False,
                  path=None,
-                 sample_time=3):
+                 sample_time=3
+                 ):
         super().__init__(
             env,
             controller,
@@ -155,6 +157,23 @@ class SimObjForKeras2(SimObj):
             animate,
             path)
         self.sample_time = sample_time
+        self.base_controller = base_controller
+
+    def get_patient_bio(self, info):
+        name = info.get('patient_name')
+        if any(self.base_controller.quest.Name.str.match(name)):
+            q = self.base_controller.quest[self.base_controller.quest.Name.str.match(name)]
+            params = self.base_controller.patient_params[self.base_controller.patient_params.Name.str.match(
+                name)]
+            u2ss = np.asscalar(params.u2ss.values)
+            BW = np.asscalar(params.BW.values)
+            TDI = q.TDI.values
+        else:
+            u2ss = 1.43
+            BW = 57.0
+            TDI = [50]
+
+        return u2ss, BW, TDI
 
     def simulate(self):
 
@@ -175,7 +194,7 @@ class SimObjForKeras2(SimObj):
 
             tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
 
-            previous_state = obs
+            previous_state = obs.CGM, glucose_rate
 
             action = self.controller.policy(tf_prev_state, reward, done, **info)
 
@@ -183,11 +202,11 @@ class SimObjForKeras2(SimObj):
 
             obs, _, done, info = self.env.step(act_in_sim_form)
 
-            glucose_rate = self.get_glucose_rate(previous_state.CGM, obs.CGM)
+            glucose_rate = self.get_glucose_rate(previous_state[0], obs.CGM)
 
             reward = self.get_reward(obs.CGM, glucose_rate)
 
-            IOB = self.get_IOB()
+            IOB = self.get_IOB(info, obs.CGM, previous_state[0], previous_state[1])
 
             if done:
                 print(self.env.time - self.env.scenario.start_time)
@@ -209,7 +228,7 @@ class SimObjForKeras2(SimObj):
 
         D_l = abs(glucose - 120.0)
 
-        r_long = 0.0
+        #r_long = 0.0
 
         if 70 <= glucose <= 180:
             r_long = -D_l
@@ -220,33 +239,35 @@ class SimObjForKeras2(SimObj):
 
         D_r = abs(m_target * (glucose - 120) - rate_of_change)
 
-        r_short = 0.0
 
-        if glucose < 100:
-            if rate_of_change < 0.6:
-                r_short = -5 * D_r
-            elif rate_of_change >= 3:
-                r_short = 0
-            else:
-                r_short = -3 * D_r
 
-        if 100 <= glucose <= 160:
-            if rate_of_change >= 3:
-                r_short = 0
-            else:
-                r_short = -D_r
+        def get_rshort():
+            if glucose < 100:
+                if rate_of_change < 0.6:
+                    return -5 * D_r
+                elif rate_of_change >= 3:
+                    return 0
+                else:
+                    return -3 * D_r
 
-        if 160 <= glucose < 180:
-            if rate_of_change >= 3:
-                r_short = -5 * D_r
-            else:
-                r_short = -D_r
-        else:
-            if rate_of_change >= 1.5:
-                r_short = -5 * D_r
-            else:
-                r_short = -3 * D_r
+            if 100 <= glucose < 160:
+                if rate_of_change >= 3:
+                    return 0
+                else:
+                    return -D_r
 
+            if 160 <= glucose < 180:
+                if rate_of_change >= 3:
+                    return -5 * D_r
+                else:
+                    return -D_r
+            else:
+                if rate_of_change >= 1.5:
+                    return -5 * D_r
+                else:
+                    return -3 * D_r
+
+        r_short = get_rshort()
         scale = 0.09
 
         reward = r_short + scale * r_long
@@ -257,5 +278,79 @@ class SimObjForKeras2(SimObj):
 
         return current_glucose - previous_glucose / self.sample_time
 
-    def get_IOB(self):
-        pass
+    def get_IOB(self, info, glucose, previous_glucose, previous_rate):
+        u2ss, BW, TDI = self.get_patient_bio(info)
+
+        basal = self._calc_basal(u2ss, BW)
+        u0 = self._calc_u0(basal, glucose)
+        IOBbasal = self._calc_IOBbasal(u0)
+        IOB_TDI = self._calc_IOB_TDI(TDI)
+
+        dg_sig = self._calc_dg(glucose, previous_glucose)
+        d2g_sig = self._calc_d2g(dg_sig, previous_rate)
+        IOB_max = self._calc_IOBmax(IOBbasal, IOB_TDI, glucose, dg_sig, d2g_sig, TDI)
+
+        return IOB_max
+
+    def _calc_basal(self, u2ss, BW):
+        return u2ss * BW / 6000 * 60
+
+    def _calc_u0(self, basal, glucose):
+        if basal >= 1.25:
+            return 0.85 * basal
+        if glucose >= 100:
+            return 1 * basal
+        if glucose < 100:
+            return 0.75 * basal
+
+    def _calc_IOBbasal(self, u0):
+        aIOB = 5.0
+        return aIOB * u0
+
+    def _calc_IOB_TDI(self, TDI):
+        if TDI <= 25:
+            return 0.11
+        if 25 < TDI <= 35:
+            return 0.125
+        if 35 < TDI <= 45:
+            return 0.12
+        if 45 < TDI <= 55:
+            return 0.175
+        if 55 < TDI:
+            return 0.2
+
+        raise Exception("no conditions matched")
+
+    def _calc_dg(self, glucose, previous_glucose):
+        return (glucose - previous_glucose) / self.sample_time
+
+    def _calc_d2g(self,current_rate, previous_rate):
+        return (current_rate - previous_rate) / self.sample_time
+
+    def _calc_IOBmax(self, IOBbasal, IOB_TDI, glucose, dg_sig, d2g_sig, TDI):
+
+        if glucose < 125:
+            return 1.10 * IOBbasal
+
+        if 150 <= g and dg_sig > 0.25 and d2g_sig > 0.035:
+            return max(IOB_TDI, 2.5 * IOBbasal)
+
+        if 175 <= g and dg_sig > 0.35 and d2g_sig > 0.035:
+            return max(IOB_TDI, 3.5 * IOBbasal)
+
+        if 200 <= g and dg_sig > -0.05:
+            return max(IOB_TDI, 3.5 * IOBbasal)
+
+        if 200 <= g and dg_sig > 0.15:
+            return max(IOB_TDI, 4.5 * IOBbasal)
+
+        if 200 <= g and dg_sig > 0.3:
+            return max(IOB_TDI, 6.5 * IOBbasal)
+
+        if TDI < 30:
+            return 0.95 * IOBbasal
+
+        if 125 <= g:
+            return 1.35 * IOBbasal
+
+        raise Exception("no conditions matched")

@@ -2,6 +2,7 @@ import math
 import random
 from datetime import datetime, timedelta
 from pprint import pprint
+import numpy as np
 
 
 def generate(startTime, simTime:timedelta, skip_meals:False):
@@ -39,9 +40,21 @@ def generate(startTime, simTime:timedelta, skip_meals:False):
                     del meal_dict[t]
     
     return dict([(key,value[0]) for key, value in meal_dict.items()])
-    
+
+def generateDDPGTest1(startTime,simTime:timedelta, skip_meals:False ):
+    meal_dict ={}
+    for day in range(simTime.days):
+        meal_time = np.random.normal(10, 1)
+        time = startTime + timedelta(days=day) + timedelta(hours=meal_time)
+        amount = np.round(np.random.normal(65, 17))
+        meal_dict[time] = amount
+
+    return meal_dict
+
+
+
 
 if __name__ == '__main__':
     now = datetime.now()
     start_time = datetime.combine(now.date(), datetime.min.time())
-    pprint(generate(start_time, timedelta(weeks=3), True))
+    pprint(generateDDPGTest1(start_time, timedelta(weeks=3), True))

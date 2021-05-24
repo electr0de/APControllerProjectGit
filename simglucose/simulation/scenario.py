@@ -105,3 +105,17 @@ def parseTime(time, start_time):
 class ZeroScenario(CustomScenario):
     def get_action(self, t):
         return Action(meal=0)
+
+class DDPGScenario(CustomScenario):
+    def __init__(self, start_time=None, sim_time=None, skip_meal=False):
+
+        Scenario.__init__(self, start_time=start_time)
+
+        self.my_scenario = gen.generateDDPGTest1(start_time, sim_time, skip_meal)
+
+    def get_action(self, t):
+
+
+        if self.my_scenario.get(t,0) != 0:
+            print(f"fed patent at time {t.day} {t.hour}")
+        return Action(meal=self.my_scenario.get(t,0))
