@@ -62,6 +62,7 @@ class CGMSensorWithoutNoise(CGMSensor):
             CGM = min(CGM, self._params["max"])
             self._last_CGM = CGM
             return CGM
+        return self._last_CGM
 
 if __name__ == '__main__':
     pass

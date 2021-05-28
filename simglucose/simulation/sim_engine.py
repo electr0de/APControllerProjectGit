@@ -158,8 +158,15 @@ class SimObjForKeras2(SimObj):
             path)
         self.sample_time = sample_time
         self.base_controller = base_controller
+        self.u2ss = 0.0
+        self.BW = 0.0
+        self.TDI = 0.0
 
     def get_patient_bio(self, info):
+
+        return self.u2ss, self.BW, self.TDI
+
+    def set_patient_bio(self, info):
         name = info.get('patient_name')
         if any(self.base_controller.quest.Name.str.match(name)):
             q = self.base_controller.quest[self.base_controller.quest.Name.str.match(name)]
@@ -177,58 +184,91 @@ class SimObjForKeras2(SimObj):
 
     def simulate(self):
 
-        obs, _, done, info = self.env.reset()
+        total_episode = 2000
 
-        glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
+        _, _, _, info = self.env.reset()
 
-        reward = self.get_reward(obs.CGM, glucose_rate)
+        self.u2ss, self.BW, self.TDI = self.set_patient_bio(info)
+
         tic = time.time()
-        ep = 0
-        IOB = 0.0
+        # ep = 0
 
-        while self.env.time < self.env.scenario.start_time + self.sim_time:
+        # To store reward history of each episode
+        ep_reward_list = []
+        # To store average reward history of last few episodes
+        avg_reward_list = []
+
+        for ep in range(total_episode):
             if self.animate:
                 self.env.render()
 
-            obs_in_nd = np.array([obs.CGM, glucose_rate, IOB])
+            episodic_reward = 0
 
-            tf_prev_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+            obs, _, done, info = self.env.reset()
 
-            previous_state = obs.CGM, glucose_rate
-
-            action = self.controller.policy(tf_prev_state, reward, done, **info)
-
-            act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
-
-            obs, _, done, info = self.env.step(act_in_sim_form)
-
-            glucose_rate = self.get_glucose_rate(previous_state[0], obs.CGM)
+            glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
 
             reward = self.get_reward(obs.CGM, glucose_rate)
 
-            IOB = self.get_IOB(info, obs.CGM, previous_state[0], previous_state[1])
+            IOB = 0.0
 
-            if done:
-                print(self.env.time - self.env.scenario.start_time)
-                self.env.reset()
-                print("dead")
+            previous_state = np.array([obs.CGM, glucose_rate, IOB])
 
-                ep = ep + 1
+            while True:
 
-            obs_in_nd = np.array([obs.CGM, glucose_rate, IOB])
+                tf_prev_state = tf.expand_dims(tf.convert_to_tensor(previous_state), 0)
 
-            tf_current_state = tf.expand_dims(tf.convert_to_tensor(obs_in_nd), 0)
+                action = self.controller.policy(tf_prev_state, reward, done, **info)
 
-            self.controller.learn(tf_prev_state, action, reward, tf_current_state)
+                act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
+
+                obs, _, done, info = self.env.step(act_in_sim_form)
+
+                glucose_rate = self.get_glucose_rate(previous_state[0], obs.CGM)
+
+                reward = self.get_reward(obs.CGM, glucose_rate)
+
+                IOB = self.get_IOB(info, obs.CGM, previous_state[0], previous_state[1])
+
+                current_state = np.array([obs.CGM, glucose_rate, IOB])
+
+                self.controller.buffer.record((previous_state, action, reward, current_state))
+
+                episodic_reward += reward
+
+                self.controller.buffer.learn()
+                self.controller.update_actor()
+                self.controller.update_critic()
+
+                if done:
+
+                    print("dead")
+                    print(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
+                    self.env.reset()
+                    break
+
+                previous_state = current_state
+
+            ep_reward_list.append(episodic_reward)
+
+            # Mean of last 40 episodes
+            avg_reward = np.mean(ep_reward_list[-40:])
+            print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+            avg_reward_list.append(avg_reward)
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
+
+        plt.plot(avg_reward_list)
+        plt.xlabel("Episode")
+        plt.ylabel("Avg. Epsiodic Reward")
+        plt.show()
 
     def get_reward(self, glucose, rate_of_change):
 
         D_l = abs(glucose - 120.0)
 
-        #r_long = 0.0
+        # r_long = 0.0
 
         if 70 <= glucose <= 180:
             r_long = -D_l
@@ -238,8 +278,6 @@ class SimObjForKeras2(SimObj):
         m_target = -1 / 15
 
         D_r = abs(m_target * (glucose - 120) - rate_of_change)
-
-
 
         def get_rshort():
             if glucose < 100:
@@ -324,7 +362,7 @@ class SimObjForKeras2(SimObj):
     def _calc_dg(self, glucose, previous_glucose):
         return (glucose - previous_glucose) / self.sample_time
 
-    def _calc_d2g(self,current_rate, previous_rate):
+    def _calc_d2g(self, current_rate, previous_rate):
         return (current_rate - previous_rate) / self.sample_time
 
     def _calc_IOBmax(self, IOBbasal, IOB_TDI, glucose, dg_sig, d2g_sig, TDI):
@@ -332,25 +370,25 @@ class SimObjForKeras2(SimObj):
         if glucose < 125:
             return 1.10 * IOBbasal
 
-        if 150 <= g and dg_sig > 0.25 and d2g_sig > 0.035:
+        if 150 <= glucose and dg_sig > 0.25 and d2g_sig > 0.035:
             return max(IOB_TDI, 2.5 * IOBbasal)
 
-        if 175 <= g and dg_sig > 0.35 and d2g_sig > 0.035:
+        if 175 <= glucose and dg_sig > 0.35 and d2g_sig > 0.035:
             return max(IOB_TDI, 3.5 * IOBbasal)
 
-        if 200 <= g and dg_sig > -0.05:
+        if 200 <= glucose and dg_sig > -0.05:
             return max(IOB_TDI, 3.5 * IOBbasal)
 
-        if 200 <= g and dg_sig > 0.15:
+        if 200 <= glucose and dg_sig > 0.15:
             return max(IOB_TDI, 4.5 * IOBbasal)
 
-        if 200 <= g and dg_sig > 0.3:
+        if 200 <= glucose and dg_sig > 0.3:
             return max(IOB_TDI, 6.5 * IOBbasal)
 
         if TDI < 30:
             return 0.95 * IOBbasal
 
-        if 125 <= g:
+        if 125 <= glucose:
             return 1.35 * IOBbasal
 
         raise Exception("no conditions matched")

@@ -78,6 +78,8 @@ class T1DSimEnv(object):
             CHO += tmp_CHO / self.sample_time
             insulin += tmp_insulin / self.sample_time
             BG += tmp_BG / self.sample_time
+            #print(tmp_CGM)
+            #print(self.sample_time)
             CGM += tmp_CGM / self.sample_time
 
         # Compute risk index

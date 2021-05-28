@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 
 
+
 class MyController(Controller):
 
 
@@ -19,12 +20,12 @@ class MyController(Controller):
         self.gym_id = gym_id
         env = gym.make(self.gym_id)
 
-        self.num_states = env.observation_space.shape[0]
+        self.num_states = 3
         print("Size of State Space ->  {}".format(self.num_states))
         self.num_actions = env.action_space.shape[0]
         print("Size of Action Space ->  {}".format(self.num_actions))
 
-        self.upper_bound = 10.0
+        self.upper_bound = 10
         self.lower_bound = env.action_space.low[0]
 
         print("Max Value of Action ->  {}".format(self.upper_bound))
@@ -39,11 +40,21 @@ class MyController(Controller):
         self.target_actor.set_weights(self.actor_model.get_weights())
         self.target_critic.set_weights(self.critic_model.get_weights())
 
+
+
         self.buffer = Buffer(50000, 64,self)
 
         self.ep_reward_list = []
         self.avg_reward_list = []
         self.episodic_reward = 0
+
+        self.tau = 0.05
+
+
+        #self.total_episodes = 100
+
+        std_dev = 0.05
+        self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
 
     def policy(self, observation, reward, done, **info):
         '''
@@ -64,7 +75,7 @@ class MyController(Controller):
                  controller action contains two entries: basal, bolus
         '''
 
-        action = self.internal_policy(observation, ou_noise)
+        action = self.internal_policy(observation, self.ou_noise)
 
 
         return action
@@ -101,6 +112,11 @@ class MyController(Controller):
         for (a, b) in zip(target_weights, weights):
             a.assign(b * tau + a * (1 - tau))
 
+    def update_actor(self):
+
+        for (a, b) in zip(self.target_actor.variables, self.actor_model.variables):
+            a.assign(b * self.tau + a * (1 - self.tau))
+
     """
     Here we define the Actor and Critic networks. These are basic Dense models
     with `ReLU` activation.
@@ -109,6 +125,12 @@ class MyController(Controller):
     the initial stages, which would squash our gradients to zero,
     as we use the `tanh` activation.
     """
+
+    def update_critic(self):
+
+        for (a, b) in zip(self.target_critic.variables, self.critic_model.variables):
+            a.assign(b * self.tau + a * (1 - self.tau))
+
 
     def get_actor(self):
         # Initialize weights between -3e-3 and 3-e3
@@ -158,9 +180,9 @@ class MyController(Controller):
         except:
             traceback.print_exc()
 
-        noise = noise_object()
+        #noise = noise_object()
         # Adding noise to action
-        sampled_actions = sampled_actions.numpy() + noise
+        sampled_actions = sampled_actions.numpy() #+ noise
 
         # We make sure action is within bounds
         legal_action = np.clip(sampled_actions, self.lower_bound, self.upper_bound)
@@ -218,6 +240,14 @@ class Buffer:
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
         self.next_state_buffer = np.zeros((self.buffer_capacity, self.Controller.num_states))
 
+        self.gamma = 0.1
+
+        critic_lr = 0.02
+        actor_lr = 0.01
+
+        self.critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
+        self.actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
+
     # Takes (s,a,r,s') obervation tuple as input
     def record(self, obs_tuple):
         # Set index to zero if buffer_capacity is exceeded,
@@ -242,14 +272,14 @@ class Buffer:
         # See Pseudo Code.
         with tf.GradientTape() as tape:
             target_actions = self.Controller.target_actor(next_state_batch, training=True)
-            y = reward_batch + gamma * self.Controller.target_critic(
+            y = reward_batch + self.gamma * self.Controller.target_critic(
                 [next_state_batch, target_actions], training=True
             )
             critic_value = self.Controller.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
 
         critic_grad = tape.gradient(critic_loss, self.Controller.critic_model.trainable_variables)
-        critic_optimizer.apply_gradients(
+        self.critic_optimizer.apply_gradients(
             zip(critic_grad, self.Controller.critic_model.trainable_variables)
         )
 
@@ -261,7 +291,7 @@ class Buffer:
             actor_loss = -tf.math.reduce_mean(critic_value)
 
         actor_grad = tape.gradient(actor_loss, self.Controller.actor_model.trainable_variables)
-        actor_optimizer.apply_gradients(
+        self.actor_optimizer.apply_gradients(
             zip(actor_grad, self.Controller.actor_model.trainable_variables)
         )
 # We compute the loss and update parameters
@@ -285,20 +315,12 @@ class Buffer:
 
 
 
-std_dev = 0.05
-ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
 
 # Making the weights equal initially
 
 # Learning rate for actor-critic models
-critic_lr = 0.9
-actor_lr = 0.8
 
-critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
-actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 100
 # Discount factor for future rewards
-gamma = 0.99
+
 # Used to update target networks
-tau = 0.005
