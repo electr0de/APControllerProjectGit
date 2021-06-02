@@ -328,16 +328,22 @@ for ep in range(total_episodes):
     while True:
         # Uncomment this to see the Actor in action
         # But not in a python notebook.
-        # env.render()
+        #env.render()
+        #print(f"state is like {prev_state} with type {type(prev_state)} and shape {prev_state.shape}")
 
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
+        #print(f"when converted to tf is like {tf_prev_state} and type {type(tf_prev_state)} and shape {tf_prev_state.shape}")
+
         action = policy(tf_prev_state, ou_noise)
+
+        #print(f"action is like {action} with type {type(action)}")
 
         # Recieve state and reward from environment.
         state, reward, done, info = env.step(action)
-        print(f"difference in rewards : {reward-previous_reward}")
-        previous_reward = reward
+        #print(f"difference in rewards : {reward-previous_reward}")
+
+        #previous_reward = reward
         buffer.record((prev_state, action, reward, state))
         episodic_reward += reward
 

@@ -54,6 +54,7 @@ class SimObj(object):
         df.to_csv(filename)
 
     def reset(self):
+
         self.env.reset()
         self.controller.reset()
 
@@ -179,12 +180,12 @@ class SimObjForKeras2(SimObj):
             u2ss = 1.43
             BW = 57.0
             TDI = [50]
-
+        print(f"Set the values to u2ss : {u2ss}, BW: {BW}, TDI : {TDI}")
         return u2ss, BW, TDI
 
     def simulate(self):
 
-        total_episode = 2000
+        total_episode = 100
 
         _, _, _, info = self.env.reset()
 
@@ -207,6 +208,7 @@ class SimObjForKeras2(SimObj):
             obs, _, done, info = self.env.reset()
 
             glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
+            #print(f"Glucose rate : {glucose_rate}")
 
             reward = self.get_reward(obs.CGM, glucose_rate)
 
@@ -214,23 +216,33 @@ class SimObjForKeras2(SimObj):
 
             previous_state = np.array([obs.CGM, glucose_rate, IOB])
 
-            while True:
+            #print(f"shape of start state : {previous_state.shape} and values :{previous_state}")
 
+            while True:
+                print(f"ep no: {ep}")
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(previous_state), 0)
+
+             #   print(f"shape of tf state : {tf_prev_state.shape} and values:{tf_prev_state}")
 
                 action = self.controller.policy(tf_prev_state, reward, done, **info)
 
+              #  print(f"shape of action and value: {action}")
+
                 act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
+               # print(f"action given to simulator : {act_in_sim_form}")
 
                 obs, _, done, info = self.env.step(act_in_sim_form)
 
                 glucose_rate = self.get_glucose_rate(previous_state[0], obs.CGM)
+
 
                 reward = self.get_reward(obs.CGM, glucose_rate)
 
                 IOB = self.get_IOB(info, obs.CGM, previous_state[0], previous_state[1])
 
                 current_state = np.array([obs.CGM, glucose_rate, IOB])
+
+                #print(f"shape of current state : {current_state.shape} and values :{current_state}")
 
                 self.controller.buffer.record((previous_state, action, reward, current_state))
 
@@ -244,7 +256,7 @@ class SimObjForKeras2(SimObj):
 
                     print("dead")
                     print(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
-                    self.env.reset()
+                    #self.env.reset()
                     break
 
                 previous_state = current_state
@@ -313,8 +325,9 @@ class SimObjForKeras2(SimObj):
         return reward
 
     def get_glucose_rate(self, previous_glucose, current_glucose):
+        print(f"previous glucose :{previous_glucose}, current glucose :{current_glucose}")
 
-        return current_glucose - previous_glucose / self.sample_time
+        return (current_glucose - previous_glucose) / self.sample_time
 
     def get_IOB(self, info, glucose, previous_glucose, previous_rate):
         u2ss, BW, TDI = self.get_patient_bio(info)
