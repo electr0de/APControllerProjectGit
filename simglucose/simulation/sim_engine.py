@@ -179,9 +179,9 @@ class SimObjForKeras2(SimObj):
         else:
             u2ss = 1.43
             BW = 57.0
-            TDI = [50]
+            TDI = 50
         print(f"Set the values to u2ss : {u2ss}, BW: {BW}, TDI : {TDI}")
-        return u2ss, BW, TDI
+        return u2ss, BW, TDI[0]
 
     def simulate(self):
 
@@ -199,6 +199,15 @@ class SimObjForKeras2(SimObj):
         # To store average reward history of last few episodes
         avg_reward_list = []
 
+        self.min_glucose = 30
+        self.max_glucose = 400
+        self.min_rate = -4
+        self.max_rate = 4
+
+        self.min_IOB, self.max_IOB = self._get_IOB_range()
+
+        #print(f"self.min_IOB: {self.min_IOB},self.max_IOB: {self.max_IOB}")
+
         for ep in range(total_episode):
             if self.animate:
                 self.env.render()
@@ -208,41 +217,55 @@ class SimObjForKeras2(SimObj):
             obs, _, done, info = self.env.reset()
 
             glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
-            #print(f"Glucose rate : {glucose_rate}")
-
+            # print(f"Glucose rate : {glucose_rate}")
+            previous_glucose = obs.CGM
             reward = self.get_reward(obs.CGM, glucose_rate)
 
             IOB = 0.0
 
-            previous_state = np.array([obs.CGM, glucose_rate, IOB])
+            #print(f"Initial state : {obs.CGM, glucose_rate, IOB}")
+            previous_state_non_nor = (obs.CGM, glucose_rate, IOB)
+            CGM, glucose_rate, IOB = self._scale_inputs(obs.CGM, glucose_rate, IOB)
+            #print(f"From scaled CGM :{CGM}, glucose_rate :{glucose_rate}, IOB:{IOB}")
+            previous_state = np.array([CGM, glucose_rate, IOB])
 
-            #print(f"shape of start state : {previous_state.shape} and values :{previous_state}")
+
+            # print(f"shape of start state : {previous_state.shape} and values :{previous_state}")
 
             while True:
-                print(f"ep no: {ep}")
+                print(f"ep no: {ep} and day{self.env.time}")
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(previous_state), 0)
 
-             #   print(f"shape of tf state : {tf_prev_state.shape} and values:{tf_prev_state}")
+                #   print(f"shape of tf state : {tf_prev_state.shape} and values:{tf_prev_state}")
 
                 action = self.controller.policy(tf_prev_state, reward, done, **info)
 
-              #  print(f"shape of action and value: {action}")
+                #print(f"shape of action and value: {action}")
 
                 act_in_sim_form = Action(basal=action[0].item(0), bolus=0)
-               # print(f"action given to simulator : {act_in_sim_form}")
+                # print(f"action given to simulator : {act_in_sim_form}")
 
                 obs, _, done, info = self.env.step(act_in_sim_form)
+                if obs.CHO > 0:
+                    print(f"Fed patient: {obs.CHO}")
 
-                glucose_rate = self.get_glucose_rate(previous_state[0], obs.CGM)
-
+                glucose_rate = self.get_glucose_rate(previous_state_non_nor[0], obs.CGM)
 
                 reward = self.get_reward(obs.CGM, glucose_rate)
 
-                IOB = self.get_IOB(info, obs.CGM, previous_state[0], previous_state[1])
+                IOB = self.get_IOB(info, obs.CGM, previous_state_non_nor[0], previous_state_non_nor[1])
 
-                current_state = np.array([obs.CGM, glucose_rate, IOB])
+                #print(f"Current state : {obs.CGM, glucose_rate, IOB}")
 
-                #print(f"shape of current state : {current_state.shape} and values :{current_state}")
+                previous_state_non_nor = (obs.CGM, glucose_rate, IOB)
+
+                CGM, glucose_rate, IOB = self._scale_inputs(obs.CGM, glucose_rate, IOB)
+
+                #print(f"From scaled CGM :{CGM}, glucose_rate :{glucose_rate}, IOB:{IOB}")
+
+                current_state = np.array([CGM, glucose_rate, IOB])
+
+                # print(f"shape of current state : {current_state.shape} and values :{current_state}")
 
                 self.controller.buffer.record((previous_state, action, reward, current_state))
 
@@ -253,10 +276,9 @@ class SimObjForKeras2(SimObj):
                 self.controller.update_critic()
 
                 if done:
-
                     print("dead")
                     print(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
-                    #self.env.reset()
+                    # self.env.reset()
                     break
 
                 previous_state = current_state
@@ -360,15 +382,15 @@ class SimObjForKeras2(SimObj):
 
     def _calc_IOB_TDI(self, TDI):
         if TDI <= 25:
-            return 0.11
+            return 0.11 * TDI
         if 25 < TDI <= 35:
-            return 0.125
+            return 0.125 * TDI
         if 35 < TDI <= 45:
-            return 0.12
+            return 0.12 * TDI
         if 45 < TDI <= 55:
-            return 0.175
+            return 0.175 * TDI
         if 55 < TDI:
-            return 0.2
+            return 0.2 * TDI
 
         raise Exception("no conditions matched")
 
@@ -405,3 +427,28 @@ class SimObjForKeras2(SimObj):
             return 1.35 * IOBbasal
 
         raise Exception("no conditions matched")
+
+    def _get_IOB_range(self):
+        u2ss, BW, TDI = self.get_patient_bio(None)
+        basal = self._calc_basal(u2ss, BW)
+        IOBbasal_min = self._calc_IOBbasal(0.75 * basal)
+        IOBbasal_max = self._calc_IOBbasal(basal)
+
+        IOB_TDI = self._calc_IOB_TDI(TDI)
+
+        min_IOB = min(IOB_TDI, 0.95 * IOBbasal_min)
+        max_IOB = max(IOB_TDI, 6.5 * IOBbasal_max)
+
+        return min_IOB, max_IOB
+
+    def _scale_inputs(self, glucose, glucose_rate, IOB):
+
+        if IOB == 0:
+            scaled_IOB = IOB
+        else:
+            scaled_IOB = (IOB - self.min_IOB) / (self.max_IOB - self.min_IOB)
+
+        scaled_glucose = (glucose - self.min_glucose) / (self.max_glucose - self.min_glucose)
+        scaled_rate = (glucose_rate - self.min_rate) / (self.max_rate - self.min_rate)
+
+        return scaled_glucose, scaled_rate, scaled_IOB

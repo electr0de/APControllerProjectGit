@@ -35,14 +35,14 @@ class Buffer:
 
         self.critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
         self.actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
-        print("Buffer was successfully initialized")
+        #print("Buffer was successfully initialized")
 
     # Takes (s,a,r,s') obervation tuple as input
     def record(self, obs_tuple):
         # Set index to zero if buffer_capacity is exceeded,
         # replacing old records
 
-        print(f"Recorded tuple : {obs_tuple}")
+        #print(f"Recorded tuple : {obs_tuple}")
         index = self.buffer_counter % self.buffer_capacity
 
         self.state_buffer[index] = obs_tuple[0]
@@ -59,7 +59,7 @@ class Buffer:
     def update(
             self, state_batch, action_batch, reward_batch, next_state_batch,
     ):
-        print("Update function called")
+        #print("Update function called")
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
         with tf.GradientTape() as tape:
@@ -93,7 +93,7 @@ class Buffer:
         record_range = min(self.buffer_counter, self.buffer_capacity)
         # Randomly sample indices
         batch_indices = np.random.choice(record_range, self.batch_size)
-        print(f"Learn function was called with batch indices : {batch_indices}")
+        #print(f"Learn function was called with batch indices : {batch_indices}")
         # Convert to tensors
         state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
         action_batch = tf.convert_to_tensor(self.action_buffer[batch_indices])
@@ -101,7 +101,7 @@ class Buffer:
         reward_batch = tf.cast(reward_batch, dtype=tf.float32)
         next_state_batch = tf.convert_to_tensor(self.next_state_buffer[batch_indices])
 
-        print("update function will be called")
+        #print("update function will be called")
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
 
@@ -217,13 +217,13 @@ class MyController(Controller):
 
     #@tf.function
     def update_actor(self):
-        print("Actor updated")
+        #print("Actor updated")
         for (a, b) in zip(self.target_actor.variables, self.actor_model.variables):
             a.assign(b * self.tau + a * (1 - self.tau))
 
     #@tf.function
     def update_critic(self):
-        print("Critic updated")
+        #print("Critic updated")
         for (a, b) in zip(self.target_critic.variables, self.critic_model.variables):
             a.assign(b * self.tau + a * (1 - self.tau))
 
@@ -234,7 +234,7 @@ class MyController(Controller):
         inputs = layers.Input(shape=(self.num_states,))
         out = layers.Dense(256, activation="relu")(inputs)
         out = layers.Dense(256, activation="relu")(out)
-        outputs = layers.Dense(1, activation="linear", kernel_initializer=last_init)(out)
+        outputs = layers.Dense(1, activation="sigmoid", kernel_initializer=last_init)(out)
 
         # Our upper bound is 2.0 for Pendulum.
         outputs = outputs * self.upper_bound

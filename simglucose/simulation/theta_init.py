@@ -62,15 +62,15 @@ class ThetaInit:
 
     def _calc_IOB_TDI(self):
         if self.TDI <= 25:
-            return 0.11
+            return 0.11 * self.TDI
         if 25 < self.TDI <= 35:
-            return 0.125
+            return 0.125 * self.TDI
         if 35 < self.TDI <= 45:
-            return 0.12
+            return 0.12 * self.TDI
         if 45 < self.TDI <= 55:
-            return 0.175
+            return 0.175 * self.TDI
         if 55 < self.TDI:
-            return 0.2
+            return 0.2 * self.TDI
 
         raise Exception("no conditions matched")
 

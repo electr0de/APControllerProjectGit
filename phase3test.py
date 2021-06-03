@@ -37,6 +37,7 @@ sensor = CGMSensorWithoutNoise.withName('Dexcom', seed=1)
 pump = InsulinPump.withName('Insulet')
 
 scenario = DDPGScenario(start_time=start_time,sim_time=sim_time, skip_meal=False)
+print(scenario.my_scenario)
 
 env = T1DSimEnv(patient, sensor, pump, scenario)
 

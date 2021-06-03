@@ -45,8 +45,10 @@ def generateDDPGTest1(startTime,simTime:timedelta, skip_meals:False ):
     meal_dict ={}
     for day in range(simTime.days):
         meal_time = np.random.normal(10, 1)
-        time = startTime + timedelta(days=day) + timedelta(hours=meal_time)
-        amount = np.round(np.random.normal(65, 17))
+        td = timedelta(hours=meal_time)
+        add_time = timedelta(hours=td.seconds//3600, minutes=(td.seconds//60)%60)
+        time = startTime + timedelta(days=day) + add_time
+        amount = np.round(np.random.normal(65, 17)) * 3
         meal_dict[time] = amount
 
     return meal_dict
