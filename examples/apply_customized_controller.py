@@ -276,7 +276,7 @@ class MyController(Controller):
         # Adding noise to action
         sampled_actions = sampled_actions.numpy()  # + noise
 
-        print(f"sampled_action = {sampled_actions}")
+        # print(f"sampled_action = {sampled_actions}")
 
         # We make sure action is within bounds
         legal_action = np.clip(sampled_actions, self.lower_bound, self.upper_bound)

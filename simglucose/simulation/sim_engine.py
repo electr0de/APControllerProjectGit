@@ -183,9 +183,10 @@ class SimObjForKeras2(SimObj):
         print(f"Set the values to u2ss : {u2ss}, BW: {BW}, TDI : {TDI}")
         return u2ss, BW, TDI[0]
 
+
     def simulate(self):
 
-        total_episode = 100
+        total_episode = 1000
 
         _, _, _, info = self.env.reset()
 
@@ -207,6 +208,7 @@ class SimObjForKeras2(SimObj):
         self.min_IOB, self.max_IOB = self._get_IOB_range()
 
         #print(f"self.min_IOB: {self.min_IOB},self.max_IOB: {self.max_IOB}")
+        to_print = []
 
         for ep in range(total_episode):
             if self.animate:
@@ -229,11 +231,10 @@ class SimObjForKeras2(SimObj):
             #print(f"From scaled CGM :{CGM}, glucose_rate :{glucose_rate}, IOB:{IOB}")
             previous_state = np.array([CGM, glucose_rate, IOB])
 
-
             # print(f"shape of start state : {previous_state.shape} and values :{previous_state}")
 
             while True:
-                print(f"ep no: {ep} and day{self.env.time}")
+                # to_print.append(f"ep no: {ep} and day{self.env.time}")
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(previous_state), 0)
 
                 #   print(f"shape of tf state : {tf_prev_state.shape} and values:{tf_prev_state}")
@@ -247,7 +248,7 @@ class SimObjForKeras2(SimObj):
 
                 obs, _, done, info = self.env.step(act_in_sim_form)
                 if obs.CHO > 0:
-                    print(f"Fed patient: {obs.CHO}")
+                    to_print.append(f"Fed patient: {obs.CHO}")
 
                 glucose_rate = self.get_glucose_rate(previous_state_non_nor[0], obs.CGM)
 
@@ -276,8 +277,8 @@ class SimObjForKeras2(SimObj):
                 self.controller.update_critic()
 
                 if done:
-                    print("dead")
-                    print(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
+                    to_print.append("dead")
+                    to_print.append(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
                     # self.env.reset()
                     break
 
@@ -287,8 +288,13 @@ class SimObjForKeras2(SimObj):
 
             # Mean of last 40 episodes
             avg_reward = np.mean(ep_reward_list[-40:])
-            print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
+            to_print.append("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
             avg_reward_list.append(avg_reward)
+
+            if ep % 10 == 0:
+                print(f"doing ep no. {ep}")
+                print("\n".join(to_print))
+                to_print.clear()
 
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
@@ -347,7 +353,7 @@ class SimObjForKeras2(SimObj):
         return reward
 
     def get_glucose_rate(self, previous_glucose, current_glucose):
-        print(f"previous glucose :{previous_glucose}, current glucose :{current_glucose}")
+        # print(f"previous glucose :{previous_glucose}, current glucose :{current_glucose}")
 
         return (current_glucose - previous_glucose) / self.sample_time
 

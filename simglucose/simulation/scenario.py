@@ -50,8 +50,8 @@ class CustomScenario(Scenario):
         # else:
         # return Action(meal=0)
 
-        if self.my_scenario.get(t,0) != 0:
-            print(f"fed patent at time {t.day} {t.hour}")
+        # if self.my_scenario.get(t,0) != 0:
+        #     print(f"fed patent at time {t.day} {t.hour}")
         return Action(meal=self.my_scenario.get(t,0))
 
     def reset(self):
@@ -116,6 +116,6 @@ class DDPGScenario(CustomScenario):
     def get_action(self, t):
 
 
-        if self.my_scenario.get(t,0) != 0:
-            print(f"fed patent at time {t.day} {t.hour}")
+        # if self.my_scenario.get(t,0) != 0:
+        #     print(f"fed patent at time {t.day} {t.hour}")
         return Action(meal=self.my_scenario.get(t,0))
