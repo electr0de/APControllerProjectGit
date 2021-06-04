@@ -186,7 +186,7 @@ class SimObjForKeras2(SimObj):
 
     def simulate(self):
 
-        total_episode = 1000
+        total_episode = 100
 
         _, _, _, info = self.env.reset()
 
@@ -280,6 +280,7 @@ class SimObjForKeras2(SimObj):
                     to_print.append("dead")
                     to_print.append(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
                     # self.env.reset()
+                    self.controller.buffer.update_list()
                     break
 
                 previous_state = current_state
@@ -303,6 +304,18 @@ class SimObjForKeras2(SimObj):
         plt.xlabel("Episode")
         plt.ylabel("Avg. Epsiodic Reward")
         plt.show()
+
+        plt.plot(self.controller.buffer.average_episodic_critic_loss)
+        plt.xlabel("Episode")
+        plt.ylabel("Avg. episodic critic loss")
+        plt.show()
+
+        plt.plot(self.controller.buffer.average_episodic_actor_loss)
+        plt.xlabel("Episode")
+        plt.ylabel("Avg. episodic actor loss")
+        plt.show()
+
+
 
     def get_reward(self, glucose, rate_of_change):
 

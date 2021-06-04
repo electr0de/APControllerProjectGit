@@ -37,6 +37,13 @@ class Buffer:
         self.actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
         #print("Buffer was successfully initialized")
 
+        self.critic_loss_list = []
+        self.actor_loss_list = []
+        self.average_episodic_critic_loss = []
+        self.average_episodic_actor_loss = []
+
+
+
     # Takes (s,a,r,s') obervation tuple as input
     def record(self, obs_tuple):
         # Set index to zero if buffer_capacity is exceeded,
@@ -69,6 +76,8 @@ class Buffer:
             )
             critic_value = self.Controller.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
+        self.critic_loss_list.append(critic_loss)
+        #print(f"critic_loss: {critic_loss}")
 
         critic_grad = tape.gradient(critic_loss, self.Controller.critic_model.trainable_variables)
         self.critic_optimizer.apply_gradients(
@@ -81,7 +90,8 @@ class Buffer:
             # Used `-value` as we want to maximize the value given
             # by the critic for our actions
             actor_loss = -tf.math.reduce_mean(critic_value)
-
+        self.actor_loss_list.append(actor_loss)
+        #print(f"actor_loss: {actor_loss}")
         actor_grad = tape.gradient(actor_loss, self.Controller.actor_model.trainable_variables)
         self.actor_optimizer.apply_gradients(
             zip(actor_grad, self.Controller.actor_model.trainable_variables)
@@ -104,6 +114,16 @@ class Buffer:
         #print("update function will be called")
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
+
+    def update_list(self):
+        average_critic_loss = sum(self.critic_loss_list) / len(self.critic_loss_list)
+        self.average_episodic_critic_loss.append(average_critic_loss)
+        self.critic_loss_list.clear()
+
+        average_actor_loss = sum(self.actor_loss_list) / len(self.actor_loss_list)
+        self.average_episodic_actor_loss.append(average_actor_loss)
+        self.actor_loss_list.clear()
+
 
 
 class OUActionNoise:
