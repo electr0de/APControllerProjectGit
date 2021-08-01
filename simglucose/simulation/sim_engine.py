@@ -221,19 +221,21 @@ class SimObjForKeras2(SimObj):
             glucose_rate = self.get_glucose_rate(obs.CGM, obs.CGM)
             # print(f"Glucose rate : {glucose_rate}")
             previous_glucose = obs.CGM
-            reward = self.get_reward(obs.CGM, glucose_rate)
+            _,reward = self.get_reward(obs.CGM, glucose_rate)
 
-            IOB = 0.0
+            #IOB = 0.0
 
             #print(f"Initial state : {obs.CGM, glucose_rate, IOB}")
-            previous_state_non_nor = (obs.CGM, glucose_rate, IOB)
-            CGM, glucose_rate, IOB = self._scale_inputs(obs.CGM, glucose_rate, IOB)
+            previous_state_non_nor = (obs.CGM, glucose_rate)
+            CGM, glucose_rate, _ = self._scale_inputs(obs.CGM, glucose_rate)
             #print(f"From scaled CGM :{CGM}, glucose_rate :{glucose_rate}, IOB:{IOB}")
-            previous_state = np.array([CGM, glucose_rate, IOB])
+            previous_state = np.array([CGM, glucose_rate])
 
             # print(f"shape of start state : {previous_state.shape} and values :{previous_state}")
-
+            max_steps = 500
+            current_step = 0
             while True:
+                current_step += 1
                 # to_print.append(f"ep no: {ep} and day{self.env.time}")
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(previous_state), 0)
 
@@ -252,19 +254,19 @@ class SimObjForKeras2(SimObj):
 
                 glucose_rate = self.get_glucose_rate(previous_state_non_nor[0], obs.CGM)
 
-                reward = self.get_reward(obs.CGM, glucose_rate)
+                _,reward = self.get_reward(obs.CGM, glucose_rate)
 
-                IOB = self.get_IOB(info, obs.CGM, previous_state_non_nor[0], previous_state_non_nor[1])
+                #IOB = self.get_IOB(info, obs.CGM, previous_state_non_nor[0], previous_state_non_nor[1])
 
                 #print(f"Current state : {obs.CGM, glucose_rate, IOB}")
 
-                previous_state_non_nor = (obs.CGM, glucose_rate, IOB)
+                previous_state_non_nor = (obs.CGM, glucose_rate)
 
-                CGM, glucose_rate, IOB = self._scale_inputs(obs.CGM, glucose_rate, IOB)
+                CGM, glucose_rate,_ = self._scale_inputs(obs.CGM, glucose_rate)
 
                 #print(f"From scaled CGM :{CGM}, glucose_rate :{glucose_rate}, IOB:{IOB}")
 
-                current_state = np.array([CGM, glucose_rate, IOB])
+                current_state = np.array([CGM, glucose_rate])
 
                 # print(f"shape of current state : {current_state.shape} and values :{current_state}")
 
@@ -283,6 +285,12 @@ class SimObjForKeras2(SimObj):
                     self.controller.buffer.update_list()
                     break
 
+                if current_step > max_steps:
+                    to_print.append("max step reached")
+                    to_print.append(f"total time for this episode {self.env.time - self.env.scenario.start_time}")
+                    # self.env.reset()
+                    self.controller.buffer.update_list()
+                    break
                 previous_state = current_state
 
             ep_reward_list.append(episodic_reward)
@@ -361,11 +369,11 @@ class SimObjForKeras2(SimObj):
                     return -3 * D_r
 
         r_short = get_rshort()
-        scale = 0.09
+        #scale = 0.09
 
-        reward = r_short + scale * r_long
+        #reward = r_short + scale * r_long
 
-        return reward
+        return (r_short, r_long)
 
     def get_glucose_rate(self, previous_glucose, current_glucose):
         # print(f"previous glucose :{previous_glucose}, current glucose :{current_glucose}")
@@ -462,12 +470,15 @@ class SimObjForKeras2(SimObj):
 
         return min_IOB, max_IOB
 
-    def _scale_inputs(self, glucose, glucose_rate, IOB):
+    def _scale_inputs(self, glucose, glucose_rate, IOB=None):
 
-        if IOB == 0:
-            scaled_IOB = IOB
+        if IOB != None:
+            if IOB == 0:
+                scaled_IOB = IOB
+            else:
+                scaled_IOB = (IOB - self.min_IOB) / (self.max_IOB - self.min_IOB)
         else:
-            scaled_IOB = (IOB - self.min_IOB) / (self.max_IOB - self.min_IOB)
+            scaled_IOB = None
 
         scaled_glucose = (glucose - self.min_glucose) / (self.max_glucose - self.min_glucose)
         scaled_rate = (glucose_rate - self.min_rate) / (self.max_rate - self.min_rate)

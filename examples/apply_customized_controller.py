@@ -126,6 +126,13 @@ class Buffer:
         self.average_episodic_actor_loss.append(average_actor_loss)
         self.actor_loss_list.clear()
 
+class RandomEpsilonNoise:
+    def __init__(self, low, high):
+        self.low = low
+        self.high = high
+
+    def get_noise(self):
+        return np.random.uniform(self.low, self.high)
 
 
 class OUActionNoise:
@@ -162,12 +169,12 @@ class MyController(Controller):
         # self.gym_id = gym_id
         # env = gym.make(self.gym_id)
 
-        self.num_states = 3
+        self.num_states = 2
         print("Size of State Space ->  {}".format(self.num_states))
         self.num_actions = 1
         print("Size of Action Space ->  {}".format(self.num_actions))
 
-        self.upper_bound = 10
+        self.upper_bound = 6
         self.lower_bound = 0
 
         print("Max Value of Action ->  {}".format(self.upper_bound))
@@ -194,12 +201,14 @@ class MyController(Controller):
 
         std_dev = 0.05
         self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
+        self.ran_noise = RandomEpsilonNoise(self.lower_bound, self.upper_bound)
+
 
         print("Controller was successfully initialized")
 
     def policy(self, observation, reward, done, **info):
 
-        action = self._internal_policy(observation, self.ou_noise)
+        action = self._internal_policy(observation, self.ran_noise)
 
         return action
     #redundant function
@@ -294,9 +303,9 @@ class MyController(Controller):
         temp = self.actor_model(state)
         sampled_actions = tf.squeeze(temp)
 
-        # noise = noise_object()
+        noise = noise_object.get_noise()
         # Adding noise to action
-        sampled_actions = sampled_actions.numpy()  # + noise
+        sampled_actions = sampled_actions.numpy() + noise
 
         # print(f"sampled_action = {sampled_actions}")
 
