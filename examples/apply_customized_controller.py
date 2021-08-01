@@ -35,21 +35,19 @@ class Buffer:
 
         self.critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
         self.actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
-        #print("Buffer was successfully initialized")
+        # print("Buffer was successfully initialized")
 
         self.critic_loss_list = []
         self.actor_loss_list = []
         self.average_episodic_critic_loss = []
         self.average_episodic_actor_loss = []
 
-
-
     # Takes (s,a,r,s') obervation tuple as input
     def record(self, obs_tuple):
         # Set index to zero if buffer_capacity is exceeded,
         # replacing old records
 
-        #print(f"Recorded tuple : {obs_tuple}")
+        # print(f"Recorded tuple : {obs_tuple}")
         index = self.buffer_counter % self.buffer_capacity
 
         self.state_buffer[index] = obs_tuple[0]
@@ -62,11 +60,11 @@ class Buffer:
     # Eager execution is turned on by default in TensorFlow 2. Decorating with tf.function allows
     # TensorFlow to build a static graph out of the logic and computations in our function.
     # This provides a large speed up for blocks of code that contain many small TensorFlow operations such as this one.
-    #@tf.function
+    # @tf.function
     def update(
             self, state_batch, action_batch, reward_batch, next_state_batch,
     ):
-        #print("Update function called")
+        # print("Update function called")
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
         with tf.GradientTape() as tape:
@@ -77,7 +75,7 @@ class Buffer:
             critic_value = self.Controller.critic_model([state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
         self.critic_loss_list.append(critic_loss)
-        #print(f"critic_loss: {critic_loss}")
+        # print(f"critic_loss: {critic_loss}")
 
         critic_grad = tape.gradient(critic_loss, self.Controller.critic_model.trainable_variables)
         self.critic_optimizer.apply_gradients(
@@ -91,9 +89,9 @@ class Buffer:
             # by the critic for our actions
             actor_loss = -tf.math.reduce_mean(critic_value)
         self.actor_loss_list.append(actor_loss)
-        #print(f"actor_loss: {actor_loss}")
+        # print(f"actor_loss: {actor_loss}")
         actor_grad = tape.gradient(actor_loss, self.Controller.actor_model.trainable_variables)
-       # print(f"actor gradients :{actor_grad.numpy()}")
+        # print(f"actor gradients :{actor_grad.numpy()}")
         self.last_actor_grad = actor_grad
         self.actor_optimizer.apply_gradients(
             zip(actor_grad, self.Controller.actor_model.trainable_variables)
@@ -105,7 +103,7 @@ class Buffer:
         record_range = min(self.buffer_counter, self.buffer_capacity)
         # Randomly sample indices
         batch_indices = np.random.choice(record_range, self.batch_size)
-        #print(f"Learn function was called with batch indices : {batch_indices}")
+        # print(f"Learn function was called with batch indices : {batch_indices}")
         # Convert to tensors
         state_batch = tf.convert_to_tensor(self.state_buffer[batch_indices])
         action_batch = tf.convert_to_tensor(self.action_buffer[batch_indices])
@@ -113,7 +111,7 @@ class Buffer:
         reward_batch = tf.cast(reward_batch, dtype=tf.float32)
         next_state_batch = tf.convert_to_tensor(self.next_state_buffer[batch_indices])
 
-        #print("update function will be called")
+        # print("update function will be called")
 
         self.update(state_batch, action_batch, reward_batch, next_state_batch)
 
@@ -126,13 +124,14 @@ class Buffer:
         self.average_episodic_actor_loss.append(average_actor_loss)
         self.actor_loss_list.clear()
 
+
 class RandomEpsilonNoise:
     def __init__(self, low, high):
         self.low = low
         self.high = high
 
     def get_noise(self):
-        return np.random.uniform(self.low, self.high)
+        return np.array([np.random.uniform(self.low, self.high)])
 
 
 class OUActionNoise:
@@ -161,6 +160,7 @@ class OUActionNoise:
             self.x_prev = self.x_initial
         else:
             self.x_prev = np.zeros_like(self.mean)
+
 
 class MyController(Controller):
 
@@ -203,7 +203,6 @@ class MyController(Controller):
         self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
         self.ran_noise = RandomEpsilonNoise(self.lower_bound, self.upper_bound)
 
-
         print("Controller was successfully initialized")
 
     def policy(self, observation, reward, done, **info):
@@ -211,7 +210,8 @@ class MyController(Controller):
         action = self._internal_policy(observation, self.ran_noise)
 
         return action
-    #redundant function
+
+    # redundant function
     def learn(self, prev_state, action, reward, state):
         print("Used the learn function from the controller")
         self.buffer.record((prev_state, action, reward, state))
@@ -236,25 +236,24 @@ class MyController(Controller):
         '''
         print("Reset controller was used")
 
-
         self.state = self.init_state
 
     # This update target parameters slowly
     # Based on rate `tau`, which is much less than one.
-    #@tf.function
+    # @tf.function
     def update_target(self, target_weights, weights, tau):
         for (a, b) in zip(target_weights, weights):
             a.assign(b * tau + a * (1 - tau))
 
-    #@tf.function
+    # @tf.function
     def update_actor(self):
-        #print("Actor updated")
+        # print("Actor updated")
         for (a, b) in zip(self.target_actor.variables, self.actor_model.variables):
             a.assign(b * self.tau + a * (1 - self.tau))
 
-    #@tf.function
+    # @tf.function
     def update_critic(self):
-        #print("Critic updated")
+        # print("Critic updated")
         for (a, b) in zip(self.target_critic.variables, self.critic_model.variables):
             a.assign(b * self.tau + a * (1 - self.tau))
 
@@ -304,8 +303,11 @@ class MyController(Controller):
         sampled_actions = tf.squeeze(temp)
 
         noise = noise_object.get_noise()
-        # Adding noise to action
-        sampled_actions = sampled_actions.numpy() + noise
+        # Uisng noise or exploit
+        if np.random.uniform(0,1) < 0.9:
+            sampled_actions = sampled_actions.numpy()
+        else:
+            sampled_actions = noise
 
         # print(f"sampled_action = {sampled_actions}")
 
@@ -316,6 +318,10 @@ class MyController(Controller):
 
 
 if __name__ == '__main__':
-    ctrller = MyController(0)
-    simulate(controller=ctrller)
-
+    ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(0.05) * np.ones(1))
+    noise = ou_noise()
+    noise_gen = RandomEpsilonNoise(0, 6)
+    noise2 = noise_gen.get_noise()
+    print(f"{noise} has type :{type(noise)}")
+    np.array(noise2)
+    print(f"{np.array([noise2])} has type :{type(np.array([noise2]))}")
