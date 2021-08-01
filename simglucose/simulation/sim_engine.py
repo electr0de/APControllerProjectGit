@@ -186,7 +186,7 @@ class SimObjForKeras2(SimObj):
 
     def simulate(self):
 
-        total_episode = 100
+        total_episode = 50
 
         _, _, _, info = self.env.reset()
 
@@ -296,7 +296,9 @@ class SimObjForKeras2(SimObj):
                 print(f"doing ep no. {ep}")
                 print("\n".join(to_print))
                 to_print.clear()
-
+        print(self.controller.buffer.last_actor_grad)
+        for layer in self.controller.actor_model.layers:
+            print(layer.name, layer.weights)
         toc = time.time()
         logger.info('Simulation took {} seconds.'.format(toc - tic))
 

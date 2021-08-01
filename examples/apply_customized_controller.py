@@ -93,6 +93,8 @@ class Buffer:
         self.actor_loss_list.append(actor_loss)
         #print(f"actor_loss: {actor_loss}")
         actor_grad = tape.gradient(actor_loss, self.Controller.actor_model.trainable_variables)
+       # print(f"actor gradients :{actor_grad.numpy()}")
+        self.last_actor_grad = actor_grad
         self.actor_optimizer.apply_gradients(
             zip(actor_grad, self.Controller.actor_model.trainable_variables)
         )
@@ -249,12 +251,12 @@ class MyController(Controller):
 
     def _get_actor(self):
         # Initialize weights between -3e-3 and 3-e3
-        last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
+        last_init = tf.random_uniform_initializer(minval=-0.03, maxval=0.03)
 
         inputs = layers.Input(shape=(self.num_states,))
-        out = layers.Dense(256, activation="relu")(inputs)
-        out = layers.Dense(256, activation="relu")(out)
-        outputs = layers.Dense(1, activation="sigmoid", kernel_initializer=last_init)(out)
+        out = layers.Dense(64, activation="relu")(inputs)
+        out = layers.Dense(64, activation="relu")(out)
+        outputs = layers.Dense(1, activation="linear", kernel_initializer=last_init)(out)
 
         # Our upper bound is 2.0 for Pendulum.
         outputs = outputs * self.upper_bound
@@ -274,8 +276,8 @@ class MyController(Controller):
         # Both are passed through seperate layer before concatenating
         concat = layers.Concatenate()([state_out, action_out])
 
-        out = layers.Dense(256, activation="relu")(concat)
-        out = layers.Dense(256, activation="relu")(out)
+        out = layers.Dense(64, activation="relu")(concat)
+        out = layers.Dense(64, activation="relu")(out)
         outputs = layers.Dense(1)(out)
 
         # Outputs single value for give state-action

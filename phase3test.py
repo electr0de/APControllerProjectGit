@@ -44,7 +44,7 @@ env = T1DSimEnv(patient, sensor, pump, scenario)
 controller1 = MyController('simglucose-adolescent2-v0')
 base_controller = BBController()
 
-s1 = SimObjForKeras2(env, controller1, sim_time, base_controller,animate=False, path=path)
+s1 = SimObjForKeras2(env, controller1, sim_time, base_controller, animate=False, path=path)
 
 sim_instances = [s1]
 
